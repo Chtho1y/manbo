@@ -180,7 +180,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('♥ 聊天'),
+        title: const Text('♥ 聊'),
         centerTitle: true,
         leading: Builder(
           builder: (context) {
@@ -204,15 +204,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
           widthFactor: 1,
           child: ListView(
             children: [
-              DrawerHeader(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 decoration: BoxDecoration(
                   color: Colors.blue,
                 ),
-                child: Text(
-                  '菜单',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
+                height: 40.0,
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Text(
+                    'manbo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                    ),
                   ),
                 ),
               ),
