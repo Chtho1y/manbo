@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:manbo/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -54,6 +55,7 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
+        centerTitle: true,
       ),
       body: ListView(
         children: [
@@ -61,6 +63,23 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.settings),
             title: const Text('系统提示'),
             onTap: () => _setSystemPrompt(context), // 修改系统提示词
+          ),
+          ListTile(
+            leading: const Icon(Icons.brightness_6),
+            title: const Text('暗黑模式'),
+            trailing: Switch(
+              value: Theme.of(context).brightness == Brightness.dark,
+              onChanged: (bool value) async {
+                final prefs = await SharedPreferences.getInstance();
+                if (value) {
+                  prefs.setBool('isDarkMode', true);
+                  MyApp.of(context)?.setTheme(ThemeMode.dark);
+                } else {
+                  prefs.setBool('isDarkMode', false);
+                  MyApp.of(context)?.setTheme(ThemeMode.light);
+                }
+              },
+            ),
           ),
         ],
       ),

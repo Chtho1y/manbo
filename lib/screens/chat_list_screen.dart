@@ -180,7 +180,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('♥ 聊'),
+        title: const Text('对话'),
         centerTitle: true,
         leading: Builder(
           builder: (context) {
@@ -211,9 +211,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
                 height: 40.0,
                 child: Align(
-                  alignment: Alignment.center,
+                  alignment: Alignment.centerLeft,
                   child: Text(
-                    'manbo',
+                    '选项',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,

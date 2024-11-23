@@ -1,12 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/chat_list_screen.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+
+  runApp(
+      MyApp(initialThemeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final ThemeMode initialThemeMode;
+
+  const MyApp({super.key, required this.initialThemeMode});
+
+  @override
+  MyAppState createState() => MyAppState();
+
+  static MyAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<MyAppState>();
+}
+
+class MyAppState extends State<MyApp> {
+  ThemeMode _themeMode;
+
+  MyAppState() : _themeMode = ThemeMode.light;
+
+  void setTheme(ThemeMode themeMode) {
+    setState(() {
+      _themeMode = themeMode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,6 +40,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flutter Chat Bot',
       theme: ThemeData(primarySwatch: Colors.blue),
+      darkTheme: ThemeData.dark(),
+      themeMode: _themeMode,
       home: ChatListScreen(),
     );
   }
