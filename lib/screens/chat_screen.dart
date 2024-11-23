@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../models/chat.dart';
 
@@ -17,12 +18,22 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
-  final String _systemPrompt = ""; // 设置系统提示
+  String _systemPrompt = "";
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    _loadSystemPrompt();
+  }
+
+  Future<void> _loadSystemPrompt() async {
+    // 先加载系统提示词，再加载聊天信息
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _systemPrompt = prefs.getString('systemPrompt') ?? "";
+    });
+
+    _loadMessages(); // 加载聊天信息
   }
 
   Future<void> _loadMessages() async {
@@ -49,8 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
         },
         options: Options(
           headers: {
-            'Authorization':
-                'Bearer LSYBgbFNPViuKrAdfTyT:LXWPTcxKpUGjKgVntotp', // 请确保使用有效的 API Key
+            'Authorization': 'Bearer LSYBgbFNPViuKrAdfTyT:LXWPTcxKpUGjKgVntotp',
             'Content-Type': 'application/json',
           },
         ),

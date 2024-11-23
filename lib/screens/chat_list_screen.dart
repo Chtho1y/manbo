@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:manbo/screens/webview_page.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../models/chat.dart';
 import 'chat_screen.dart';
+import 'settings_screen.dart'; // 引入新创建的设置页面
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -70,6 +72,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ChatScreen(chat: newChat),
+      ),
+    );
+  }
+
+  void _openAboutPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WebViewPage(
+          url: 'https://www.aiqwq.com/',
+          title: '关于',
+        ),
       ),
     );
   }
@@ -165,7 +179,64 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('对话列表')),
+      appBar: AppBar(
+        title: const Text('♥ 聊天'),
+        centerTitle: true,
+        leading: Builder(
+          builder: (context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                Scaffold.of(context).openDrawer(); // 打开抽屉菜单
+              },
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _startNewChat, // 新建对话
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: FractionallySizedBox(
+          widthFactor: 1,
+          child: ListView(
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                ),
+                child: Text(
+                  '菜单',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: const Text('设置'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.info),
+                title: const Text('关于'),
+                onTap: () => _openAboutPage(context),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: ListView.builder(
         itemCount: chats.length,
         itemBuilder: (context, index) {
@@ -184,10 +255,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _startNewChat,
-        child: const Icon(Icons.add),
       ),
     );
   }
