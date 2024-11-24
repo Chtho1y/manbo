@@ -204,23 +204,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
           widthFactor: 1,
           child: ListView(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                ),
-                height: 40.0,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '选项',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                    ),
-                  ),
-                ),
-              ),
+              // Container(
+              //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              //   decoration: BoxDecoration(
+              //     color: Colors.blue,
+              //   ),
+              //   height: 40.0,
+              //   child: Align(
+              //     alignment: Alignment.centerLeft,
+              //     child: Text(
+              //       '选项',
+              //       style: TextStyle(
+              //         color: Colors.white,
+              //         fontSize: 24,
+              //       ),
+              //     ),
+              //   ),
+              // ),
               ListTile(
                 leading: const Icon(Icons.settings),
                 title: const Text('设置'),

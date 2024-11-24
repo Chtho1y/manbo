@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_svg/svg.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../models/chat.dart';
@@ -27,13 +28,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadSystemPrompt() async {
-    // 先加载系统提示词，再加载聊天信息
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _systemPrompt = prefs.getString('systemPrompt') ?? "";
     });
 
-    _loadMessages(); // 加载聊天信息
+    _loadMessages();
   }
 
   Future<void> _loadMessages() async {
@@ -48,26 +48,69 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }).toList();
     });
+
+    // 确保内容渲染完成后滚动到消息底部
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _scrollToBottom();
+      });
+    });
   }
 
   Future<String> _callModelAPI(List<Map<String, dynamic>> messages) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final apiEndpoint = prefs.getString('apiEndpoint') ?? '';
+      final apiKey = prefs.getString('apiKey') ?? '';
+      final modelName = prefs.getString('modelName') ?? '';
+
+      if (apiEndpoint.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('提示'),
+            content: Text('API 调用地址、密钥或模型名称未设置，请在设置页面填写。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('确定'),
+              ),
+            ],
+          ),
+        );
+        return '';
+      }
+
       final response = await Dio().post(
-        'https://spark-api-open.xf-yun.com/v1/chat/completions',
+        apiEndpoint,
         data: {
-          'model': 'lite', // 指定模型版本
+          'model': modelName, // 动态加载模型名称
           'messages': messages, // 消息上下文
         },
         options: Options(
           headers: {
-            'Authorization': 'Bearer LSYBgbFNPViuKrAdfTyT:LXWPTcxKpUGjKgVntotp',
+            'Authorization': 'Bearer $apiKey',
             'Content-Type': 'application/json',
           },
         ),
       );
+
       return response.data['choices'][0]['message']['content'];
     } catch (e) {
-      return '无法获取回复，请稍后重试。 ($e)';
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('错误'),
+          content: Text('无法获取回复，报错信息：($e)'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      return '';
     }
   }
 
@@ -105,6 +148,12 @@ class _ChatScreenState extends State<ChatScreen> {
       ],
     );
 
+    // 如果 API 返回空内容，不添加消息
+    if (assistantReply.isEmpty) {
+      _showTopLog(context, '无法获取回复，请查看报错信息或稍后重试。');
+      return;
+    }
+
     // 模型回复消息
     final assistantMessage = Message(
       id: DateTime.now().toString(),
@@ -126,15 +175,91 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
   }
 
+  Future<void> _deleteMessage(Message message) async {
+    await DatabaseHelper.instance.deleteMessage(message.id);
+    setState(() {
+      widget.chat.messages.remove(message);
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        if (_scrollController.position.pixels != maxScroll) {
+          _scrollController.animateTo(
+            maxScroll,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       }
+    });
+  }
+
+  void _showMessageOptions(Message message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: const Text('复制'),
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: message.content));
+                  Navigator.pop(context);
+                  _showTopLog(context, '复制成功！');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text('删除'),
+                onTap: () async {
+                  await _deleteMessage(message);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTopLog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding:
+                EdgeInsets.only(top: MediaQuery.of(context).padding.top + 10),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  message,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    // 自动关闭
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.of(context, rootNavigator: true).pop();
     });
   }
 
@@ -150,21 +275,30 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: widget.chat.messages.length,
               itemBuilder: (context, index) {
                 final message = widget.chat.messages[index];
-                return Align(
-                  alignment: message.role == 'user'
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: message.role == 'user'
-                          ? Colors.blue[100]
-                          : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
+                return GestureDetector(
+                  onLongPress: () => _showMessageOptions(message),
+                  child: Align(
+                    alignment: message.role == 'user'
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.symmetric(
+                          vertical: 5, horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: message.role == 'user'
+                            ? Colors.blue[100]
+                            : const Color.fromARGB(255, 248, 240, 220),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        message.content,
+                        style: const TextStyle(
+                          color: Colors.black, // 固定消息文字黑色不会跟随主题变化
+                          fontSize: 16, // 字号
+                        ),
+                      ),
                     ),
-                    child: Text(message.content),
                   ),
                 );
               },
@@ -188,7 +322,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 IconButton(
                   icon: SvgPicture.asset(
-                    'assets/images/icon_send.svg',
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/images/icon_send_white.svg' // 暗黑模式发送icon
+                        : 'assets/images/icon_send.svg',
                     width: 32.0,
                     height: 32.0,
                   ),

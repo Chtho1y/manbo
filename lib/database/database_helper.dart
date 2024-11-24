@@ -96,4 +96,10 @@ class DatabaseHelper {
       whereArgs: [chatId],
     );
   }
+
+  // 删除单条消息
+  Future<void> deleteMessage(String messageId) async {
+    final db = await instance.database;
+    await db.delete('messages', where: 'id = ?', whereArgs: [messageId]);
+  }
 }

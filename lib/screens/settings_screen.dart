@@ -5,24 +5,50 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  Future<void> _setSystemPrompt(BuildContext context) async {
+  // 模型选择的映射
+  static const Map<String, Map<String, String>> models = {
+    'OpenAI': {
+      'ChatGPT-4o-mini': 'gpt-4-mini',
+      'ChatGPT-4': 'gpt-4',
+      'ChatGPT-4o': 'gpt-4o'
+    },
+    'Anthropic': {
+      'Claude-3.5-Sonnet': 'claude-3-5-sonnet',
+      'Claude-3-Opus': 'claude-3-opus',
+    },
+    '科大讯飞': {
+      '讯飞-Spark Lite': 'lite',
+      '讯飞-Spark Pro': 'generalv3',
+    },
+  };
+
+  Future<void> _setValue(
+      BuildContext context, String key, String title, String hint,
+      {bool obscureText = false}) async {
     final controller = TextEditingController();
 
-    // 获取当前保存的系统提示词
+    // 获取当前保存的值
     final prefs = await SharedPreferences.getInstance();
-    controller.text = prefs.getString('systemPrompt') ?? "";
+    controller.text = prefs.getString(key) ?? "";
 
-    // 弹出输入框来修改系统提示词
+    // 弹出输入框来修改值
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('设置系统提示词'),
+          title: Text(title),
           content: TextField(
             controller: controller,
-            maxLength: 100,
-            decoration: const InputDecoration(
-              hintText: '请输入新的系统提示词',
+            obscureText: obscureText, // 是否脱敏显示
+            maxLength: 200,
+            decoration: InputDecoration(
+              hintText: hint,
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.clear),
+                onPressed: () {
+                  controller.clear(); // 清除内容
+                },
+              ),
             ),
           ),
           actions: [
@@ -41,13 +67,93 @@ class SettingsScreen extends StatelessWidget {
       },
     );
 
-    // 如果用户输入了新的系统提示词，保存到 SharedPreferences 中
+    // 如果用户输入了新值，保存到 SharedPreferences 中
     if (result != null && result.isNotEmpty) {
-      await prefs.setString('systemPrompt', result);
+      await prefs.setString(key, result);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('系统提示词已更新')),
+        SnackBar(content: Text('$title 已更新')),
       );
     }
+  }
+
+  Future<void> _setModel(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // 当前选择的厂商和模型
+    String? selectedVendor = prefs.getString('modelVendor') ?? 'OpenAI';
+    String? selectedModel = prefs.getString('modelName') ?? 'gpt-3.5-turbo';
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('选择模型'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 厂商选择下拉框
+                  DropdownButton<String>(
+                    value: selectedVendor,
+                    items: models.keys.map((vendor) {
+                      return DropdownMenuItem(
+                        value: vendor,
+                        child: Text(vendor),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedVendor = value;
+                        selectedModel = models[selectedVendor!]!
+                            .entries
+                            .first
+                            .value; // 切换厂商时重置模型为第一个
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  if (selectedVendor != null)
+                    DropdownButton<String>(
+                      value: selectedModel,
+                      items: models[selectedVendor!]!.entries.map((entry) {
+                        return DropdownMenuItem(
+                          value: entry.value,
+                          child: Text(entry.key),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedModel = value;
+                        });
+                      },
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context), // 取消操作
+                  child: const Text('取消'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (selectedVendor != null && selectedModel != null) {
+                      await prefs.setString('modelVendor', selectedVendor!);
+                      await prefs.setString('modelName', selectedModel!);
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('模型设置已更新')),
+                      );
+                    }
+                  },
+                  child: const Text('确定'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -62,7 +168,30 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('系统提示'),
-            onTap: () => _setSystemPrompt(context), // 修改系统提示词
+            onTap: () =>
+                _setValue(context, 'systemPrompt', '设置系统提示词', '请输入新的系统提示词'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.api),
+            title: const Text('设置 API 调用地址'),
+            onTap: () => _setValue(
+                context, 'apiEndpoint', '设置 API 调用地址', '请输入新的 API 调用地址'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.key),
+            title: const Text('设置 API 密钥'),
+            onTap: () => _setValue(
+              context,
+              'apiKey',
+              '设置 API 密钥',
+              '请输入新的 API 密钥',
+              obscureText: true, // 设置脱敏显示
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.model_training),
+            title: const Text('选择模型'),
+            onTap: () => _setModel(context), // 模型选择
           ),
           ListTile(
             leading: const Icon(Icons.brightness_6),
