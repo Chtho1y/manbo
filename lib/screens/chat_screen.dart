@@ -150,7 +150,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // 如果 API 返回空内容，不添加消息
     if (assistantReply.isEmpty) {
-      _showTopLog(context, '无法获取回复，请查看报错信息或稍后重试。');
+      _showTopLog(context, '无法获取回复，请稍后重试。');
       return;
     }
 
@@ -210,7 +210,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: message.content));
                   Navigator.pop(context);
-                  _showTopLog(context, '复制成功！');
+                  _showTopLog(context, '复制成功');
                 },
               ),
               ListTile(
@@ -233,6 +233,12 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        // 自动延迟1秒关闭
+        Future.delayed(const Duration(seconds: 1), () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+        });
         return Align(
           alignment: Alignment.topCenter,
           child: Padding(
@@ -243,12 +249,12 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.redAccent,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   message,
-                  style: const TextStyle(color: Colors.white),
+                  style: const TextStyle(color: Colors.black),
                 ),
               ),
             ),
@@ -256,11 +262,6 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       },
     );
-
-    // 自动关闭
-    Future.delayed(const Duration(seconds: 3), () {
-      Navigator.of(context, rootNavigator: true).pop();
-    });
   }
 
   @override
