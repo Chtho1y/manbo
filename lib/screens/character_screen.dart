@@ -91,7 +91,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('游戏制作'),
+        title: const Text('角色广场'),
         centerTitle: true,
         actions: [
           IconButton(

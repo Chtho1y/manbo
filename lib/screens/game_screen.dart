@@ -53,7 +53,7 @@ class _GameScreenState extends State<GameScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('网页游戏'),
+        title: const Text('游戏制作'),
         centerTitle: true,
         actions: [
           IconButton(
