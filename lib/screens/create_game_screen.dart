@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
@@ -7,9 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CreateGameScreen extends StatefulWidget {
-  final Function(String title, String description, String imagePath)
-      onGameCreated;
-  final Map<String, dynamic>? initialData; // 初始数据，用于编辑模式
+  final Function(String title, String description, String htmlContent,
+      String imagePath) onGameCreated;
+
+  final Map<String, dynamic>? initialData;
 
   const CreateGameScreen({
     super.key,
@@ -87,8 +87,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       }
 
       final content = originalHtml == null
-          ? '[游戏名称：$title\n游戏需求描述为：$description]'
-          : '[游戏的HTML代码：$originalHtml\n优化建议：$optimizationSuggestion]';
+          ? '[游戏名称：$title\n游戏需求描述为：$description]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
+          : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在根据优化建议继续迭代该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头';
 
       final response = await Dio().post(
         apiEndpoint,
@@ -232,6 +232,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       widget.onGameCreated(
         _gameTitleController.text,
         _gameDescriptionController.text,
+        generatedHtml,
         _imagePath ?? '',
       );
       Navigator.pop(context);

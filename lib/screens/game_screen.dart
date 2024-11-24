@@ -38,10 +38,12 @@ class _GameScreenState extends State<GameScreen> {
     await prefs.setString('games', gamesJson);
   }
 
-  void _addGame(String title, String htmlContent, String imagePath) {
+  void _addGame(
+      String title, String htmlContent, String description, String imagePath) {
     setState(() {
       games.add({
         'title': title,
+        'description': description,
         'htmlContent': htmlContent,
         'imagePath': imagePath,
       });
@@ -49,11 +51,12 @@ class _GameScreenState extends State<GameScreen> {
     _saveGames();
   }
 
-  void _editGame(
-      int index, String title, String htmlContent, String imagePath) {
+  void _editGame(int index, String title, String description,
+      String htmlContent, String imagePath) {
     setState(() {
       games[index] = {
         'title': title,
+        'description': description,
         'htmlContent': htmlContent,
         'imagePath': imagePath,
       };
@@ -99,10 +102,10 @@ class _GameScreenState extends State<GameScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => CreateGameScreen(
-            onGameCreated: (title, htmlContent, imagePath) {
-              _editGame(index, title, htmlContent, imagePath);
+            onGameCreated: (title, description, htmlContent, imagePath) {
+              _editGame(index, title, description, htmlContent, imagePath);
             },
-            initialData: game, // 传递原始游戏数据
+            initialData: game, // 传递初始数据
           ),
         ),
       );
@@ -125,8 +128,9 @@ class _GameScreenState extends State<GameScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => CreateGameScreen(
-                    onGameCreated: (title, htmlContent, imagePath) {
-                      _addGame(title, htmlContent, imagePath);
+                    onGameCreated:
+                        (title, description, htmlContent, imagePath) {
+                      _addGame(title, description, htmlContent, imagePath);
                     },
                   ),
                 ),
