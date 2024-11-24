@@ -30,15 +30,24 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   String? _imagePath;
   bool _isLoading = false;
 
+  late final bool isEditMode;
+
   @override
   void initState() {
     super.initState();
-    if (widget.initialData != null) {
-      // 如果是编辑模式，加载初始数据
+    isEditMode = widget.initialData != null; // 在 initState 初始化 isEditMode
+
+    if (isEditMode) {
       final initialData = widget.initialData!;
       _gameTitleController.text = initialData['title'] ?? '';
       _gameDescriptionController.text = initialData['description'] ?? '';
+      _optimizationController.text = '';
       _imagePath = initialData['imagePath'];
+
+      // 预填充优化建议
+      if (initialData.containsKey('htmlContent')) {
+        _optimizationController.text = '你对游戏的优化建议...'; // 可以提供优化建议模板（可选）
+      }
     }
   }
 
@@ -104,68 +113,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             {
               'role': 'system',
               'content': '''
-**Task**：
-根据用户的游戏开发需求，生成一个完整的、可运行在移动端的单文件HTML网页代码。输出应包括完整的HTML标记、相关标签、必要的CSS和完整的JavaScript代码。
 
-**指导原则**：
-1. **理解用户需求**：
-   - 仔细阅读用户的游戏开发要求。
-   - 确定核心游戏机制、目标和任何特定功能。
-
-2. **分步骤思考和规划**：
-   - **结构规划**：确定需要的HTML结构，包括`<head>`、`<body>`、`<script>`和`<style>`标签。
-   - **功能规划**：列出需要实现的功能，如事件监听、游戏循环等。
-
-3. **代码实现**：
-   - **HTML**：
-     - 使用语义化的HTML标签，确保结构清晰。
-     - 所有的图片标签`<img>`都应包含`alt`文本，描述图片的风格和主题，并包含`width`和`height`属性。
-     - 例子：
-       ```html
-       <img alt="sunset over a pond, film photograph, 1970" src="sunset.jpg" width="600" height="400">
-       ```
-   - **CSS**：
-     - 使用精简且有效的CSS来绘制和动画视觉元素。
-     - 确保样式与游戏主题一致。
-   - **JavaScript**：
-     - 只在需要时使用`<script>`标签，不要留下占位符注释。
-     - 编写可运行的代码，保持代码高效有意义。
-     - 使用ES6+特性，提升代码质量和可读性。
-
-4. **交互性**：
-   - 如果输出包含输入字段，确保它们位于`<form>`元素内，且表单具有`method="GET"`和适当的`action`属性。
-   - 确保用户可以输入数据，并在下一次请求中接收到他们的自由输入。
-
-5. **链接和导航**：
-   - 为页面添加与内容相关的内部链接，使用完整的`href="https://example.com/"`格式。
-   - 避免使用`href="#"`的链接。
-   - 创造性地使用域名层次结构或URL参数，使网站内容与用户的上下文和意图相关。
-
-6. **自我检查和纠错**：
-   - 在完成代码后，仔细审查，确保没有语法错误或逻辑漏洞。
-   - 测试主要功能，确保游戏可以正常运行。
-   - 如果发现问题，及时修正，确保用户得到的是高质量的、可完美运行的代码。
-   - 绝对不可以用任何方式省略任何代码！即使是复用的内容也不可以省略，确保输出完整的逻辑！
-
-**示例结构**：
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>游戏标题</title>
-    <style>
-        /* 在这里添加CSS样式 */
-    </style>
-</head>
-<body>
-    <!-- 在这里添加HTML元素 -->
-    <script>
-        // 在这里添加JavaScript代码
-    </script>
-</body>
-</html>
-```
 '''
             },
             {'role': 'user', 'content': content},
@@ -218,8 +166,11 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       return;
     }
 
-    final originalHtml = widget.initialData?['htmlContent']; // 原始HTML
-    final optimizationSuggestion = _optimizationController.text; // 优化建议
+    // 根据 isEditMode 决定是否使用原始 HTML
+    final originalHtml =
+        widget.initialData != null ? widget.initialData!['htmlContent'] : null;
+    final optimizationSuggestion =
+        isEditMode ? _optimizationController.text : ''; // 非编辑模式下优化建议为空
 
     final generatedHtml = await _generateGameHtml(
       _gameTitleController.text,
@@ -231,9 +182,9 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     if (generatedHtml.isNotEmpty) {
       widget.onGameCreated(
         _gameTitleController.text,
-        _gameDescriptionController.text,
-        generatedHtml,
-        _imagePath ?? '',
+        _gameDescriptionController.text, // 提交需求描述
+        generatedHtml, // 提交生成的 HTML 内容
+        _imagePath ?? '', // 提交图片路径
       );
       Navigator.pop(context);
     }
@@ -241,8 +192,6 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditMode = widget.initialData != null;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditMode ? '修改游戏' : '创建新游戏'),
