@@ -125,19 +125,11 @@ class _CharacterScreenState extends State<CharacterScreen> {
             onTap: () async {
               final systemPrompt = role['systemPrompt'];
               if (systemPrompt != null && systemPrompt.isNotEmpty) {
-                if (role['isApplied'] == true) {
-                  return; // 如果系统提示词已经应用过了，则不再弹窗提示
-                }
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('systemPrompt', systemPrompt);
-                setState(() {
-                  role['isApplied'] = true;
-                });
-
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('系统提示词已应用: $systemPrompt')),
                 );
-                await _saveChatRoles();
               }
             },
             onLongPress: () async {

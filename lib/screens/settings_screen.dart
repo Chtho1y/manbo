@@ -13,12 +13,25 @@ class SettingsScreen extends StatelessWidget {
       'ChatGPT-4o': 'gpt-4o'
     },
     'Anthropic': {
-      'Claude-3.5-Sonnet': 'claude-3-5-sonnet',
-      'Claude-3-Opus': 'claude-3-opus',
+      'Claude-3.5-sonnet': 'claude-3-5-sonnet',
+      'Claude-3-opus': 'claude-3-opus',
     },
     '科大讯飞': {
-      '讯飞-Spark Lite': 'lite',
-      '讯飞-Spark Pro': 'generalv3',
+      '讯飞-Spark-Lite': 'lite',
+      '讯飞-Spark-Pro': 'generalv3',
+      '讯飞-Spark-Pro-128K': 'pro-128k',
+      '讯飞-Spark-Max': 'generalv3.5',
+      '讯飞-Spark-Max-32K': 'max-32k',
+      '讯飞-Spark-4.0-Ultra': '4.0Ultra',
+    },
+    '智谱清言': {
+      '智谱-GLM-4-flash': 'glm-4-flash',
+      '智谱-GLM-4-flashx': 'glm-4-flashx',
+      '智谱-GLM-4-long': 'glm-4-long',
+      '智谱-GLM-4-airx': 'glm-4-airx',
+      '智谱-GLM-4-air': 'glm-4-air',
+      '智谱-GLM-4': 'glm-4',
+      '智谱-GLM-4-plus': 'glm-4-plus',
     },
   };
 

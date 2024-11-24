@@ -82,7 +82,31 @@ class _ChatListScreenState extends State<ChatListScreen> {
       MaterialPageRoute(
         builder: (context) => WebViewPage(
           url: 'https://www.aiqwq.com/',
-          title: '关于',
+          title: '关于我们',
+        ),
+      ),
+    );
+  }
+
+  void _openPrivacyPolicyPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WebViewPage(
+          url: 'https://www.aiqwq.com/zh/privacypolicy',
+          title: '隐私政策',
+        ),
+      ),
+    );
+  }
+
+  void _openUserAgreementPage(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WebViewPage(
+          url: 'https://www.aiqwq.com/zh/useragreement',
+          title: '用户协议',
         ),
       ),
     );
@@ -223,7 +247,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               // ),
               ListTile(
                 leading: const Icon(Icons.settings),
-                title: const Text('设置'),
+                title: const Text('基础设置'),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -234,8 +258,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.security),
+                title: const Text('隐私政策'),
+                onTap: () => _openPrivacyPolicyPage(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.assignment),
+                title: const Text('用户协议'),
+                onTap: () => _openUserAgreementPage(context),
+              ),
+              ListTile(
                 leading: const Icon(Icons.info),
-                title: const Text('关于'),
+                title: const Text('关于我们'),
                 onTap: () => _openAboutPage(context),
               ),
             ],
