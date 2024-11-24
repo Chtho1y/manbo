@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
@@ -8,8 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class CreateGameScreen extends StatefulWidget {
   final Function(String title, String description, String imagePath)
       onGameCreated;
+  final Map<String, dynamic>? initialData; // 初始数据，用于编辑模式
 
-  const CreateGameScreen({super.key, required this.onGameCreated});
+  const CreateGameScreen({
+    super.key,
+    required this.onGameCreated,
+    this.initialData,
+  });
 
   @override
   _CreateGameScreenState createState() => _CreateGameScreenState();
@@ -19,8 +25,22 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   final TextEditingController _gameTitleController = TextEditingController();
   final TextEditingController _gameDescriptionController =
       TextEditingController();
+  final TextEditingController _optimizationController =
+      TextEditingController(); // 优化输入框
   String? _imagePath;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialData != null) {
+      // 如果是编辑模式，加载初始数据
+      final initialData = widget.initialData!;
+      _gameTitleController.text = initialData['title'] ?? '';
+      _gameDescriptionController.text = initialData['description'] ?? '';
+      _imagePath = initialData['imagePath'];
+    }
+  }
 
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
@@ -33,7 +53,12 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     }
   }
 
-  Future<String> _generateGameHtml(String title, String description) async {
+  Future<String> _generateGameHtml(
+    String title,
+    String description,
+    String? originalHtml,
+    String optimizationSuggestion,
+  ) async {
     try {
       setState(() {
         _isLoading = true;
@@ -49,7 +74,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('提示'),
-            content: Text('API 调用地址、密钥或模型名称未设置，请在设置页面填写。'),
+            content: const Text('API 调用地址、密钥或模型名称未设置，请在设置页面填写。'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -61,7 +86,24 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         return '';
       }
 
-      const systemPrompt = '''
+      final content = originalHtml == null
+          ? '[游戏名称：$title\n游戏需求描述为：$description]'
+          : '[游戏的HTML代码：$originalHtml\n优化建议：$optimizationSuggestion]';
+
+      final response = await Dio().post(
+        apiEndpoint,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: {
+          'model': modelName,
+          'messages': [
+            {
+              'role': 'system',
+              'content': '''
 **Task**：
 根据用户的游戏开发需求，生成一个完整的、可运行在移动端的单文件HTML网页代码。输出应包括完整的HTML标记、相关标签、必要的CSS和完整的JavaScript代码。
 
@@ -124,49 +166,24 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 </body>
 </html>
 ```
-''';
-
-      // 模拟 API 请求，传递 `systemPrompt`、`title` 和 `description`
-      final response = await Dio().post(
-        apiEndpoint,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-        ),
-        data: {
-          'model': modelName,
-          'messages': [
-            {'role': 'system', 'content': systemPrompt},
-            {
-              'role': 'user',
-              'content':
-                  '[游戏名称：$title\n游戏需求描述为：$description]\n现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
-            }
+'''
+            },
+            {'role': 'user', 'content': content},
           ],
         },
       );
 
-      // 提取 API 返回的数据
       final rawOutput = response.data['choices'][0]['message']['content'];
-
-      // 使用正则表达式提取 <html> 标签内的内容
       final htmlMatch =
           RegExp(r'<html.*?>[\s\S]*?</html>', caseSensitive: false)
               .firstMatch(rawOutput);
 
       if (htmlMatch != null) {
-        // 提取并返回 <html> 标签的内容
         return htmlMatch.group(0) ?? '';
       } else {
         throw Exception('未检测到有效的代码内容，请重试。');
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -201,15 +218,20 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       return;
     }
 
+    final originalHtml = widget.initialData?['htmlContent']; // 原始HTML
+    final optimizationSuggestion = _optimizationController.text; // 优化建议
+
     final generatedHtml = await _generateGameHtml(
       _gameTitleController.text,
       _gameDescriptionController.text,
+      originalHtml,
+      optimizationSuggestion,
     );
 
     if (generatedHtml.isNotEmpty) {
       widget.onGameCreated(
         _gameTitleController.text,
-        generatedHtml,
+        _gameDescriptionController.text,
         _imagePath ?? '',
       );
       Navigator.pop(context);
@@ -218,9 +240,11 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditMode = widget.initialData != null;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('创建新游戏'),
+        title: Text(isEditMode ? '修改游戏' : '创建新游戏'),
       ),
       body: Column(
         children: [
@@ -245,6 +269,16 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
                       labelText: '游戏需求描述',
                     ),
                   ),
+                  if (isEditMode) ...[
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _optimizationController,
+                      maxLength: 500,
+                      decoration: const InputDecoration(
+                        labelText: '优化建议',
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   Center(
                     child: ElevatedButton(

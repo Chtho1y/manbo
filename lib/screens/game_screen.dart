@@ -49,6 +49,68 @@ class _GameScreenState extends State<GameScreen> {
     _saveGames();
   }
 
+  void _editGame(
+      int index, String title, String htmlContent, String imagePath) {
+    setState(() {
+      games[index] = {
+        'title': title,
+        'htmlContent': htmlContent,
+        'imagePath': imagePath,
+      };
+    });
+    _saveGames();
+  }
+
+  void _deleteGame(int index) {
+    setState(() {
+      games.removeAt(index);
+    });
+    _saveGames();
+  }
+
+  Future<void> _showBottomSheet(int index) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('修改'),
+              onTap: () {
+                Navigator.pop(context, 'edit');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('删除'),
+              onTap: () {
+                Navigator.pop(context, 'delete');
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (action == 'edit') {
+      final game = games[index];
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateGameScreen(
+            onGameCreated: (title, htmlContent, imagePath) {
+              _editGame(index, title, htmlContent, imagePath);
+            },
+            initialData: game, // 传递原始游戏数据
+          ),
+        ),
+      );
+    } else if (action == 'delete') {
+      _deleteGame(index);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,6 +188,7 @@ class _GameScreenState extends State<GameScreen> {
                         ),
                       );
                     },
+                    onLongPress: () => _showBottomSheet(index),
                   ),
                 ],
               ),
