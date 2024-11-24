@@ -258,7 +258,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.security),
+                leading: const Icon(Icons.lock),
                 title: const Text('隐私政策'),
                 onTap: () => _openPrivacyPolicyPage(context),
               ),
