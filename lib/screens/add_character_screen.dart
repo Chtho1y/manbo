@@ -67,6 +67,7 @@ class _AddCharacterScreenState extends State<AddCharacterScreen> {
                 children: [
                   TextField(
                     controller: _roleNameController,
+                    maxLength: 30,
                     decoration: const InputDecoration(
                       labelText: '角色名称',
                     ),
@@ -74,7 +75,7 @@ class _AddCharacterScreenState extends State<AddCharacterScreen> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _systemPromptController,
-                    maxLength: 1000, // 设置最大字符数为 1000
+                    maxLength: 1000, // 设置最大字符数
                     decoration: const InputDecoration(
                       labelText: '系统提示词',
                       counterText: '', // 隐藏字符计数提示

@@ -124,11 +124,12 @@ class _CharacterScreenState extends State<CharacterScreen> {
           return GestureDetector(
             onTap: () async {
               final systemPrompt = role['systemPrompt'];
+              final roleName = role['roleName'];
               if (systemPrompt != null && systemPrompt.isNotEmpty) {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('systemPrompt', systemPrompt);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('系统提示词已应用: $systemPrompt')),
+                  SnackBar(content: Text('角色 $roleName 系统提示词已应用')),
                 );
               }
             },
