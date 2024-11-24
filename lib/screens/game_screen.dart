@@ -38,28 +38,25 @@ class _GameScreenState extends State<GameScreen> {
     await prefs.setString('games', gamesJson);
   }
 
-  void _addGame(
-      String title, String htmlContent, String description, String imagePath) {
+  void _upsertGame({
+    int? index,
+    required String title,
+    required String description,
+    required String htmlContent,
+    required String imagePath,
+  }) {
     setState(() {
-      games.add({
-        'title': title,
-        'description': description,
-        'htmlContent': htmlContent,
-        'imagePath': imagePath,
-      });
-    });
-    _saveGames();
-  }
-
-  void _editGame(int index, String title, String description,
-      String htmlContent, String imagePath) {
-    setState(() {
-      games[index] = {
+      final game = {
         'title': title,
         'description': description,
         'htmlContent': htmlContent,
         'imagePath': imagePath,
       };
+      if (index != null) {
+        games[index] = game;
+      } else {
+        games.add(game);
+      }
     });
     _saveGames();
   }
@@ -103,7 +100,13 @@ class _GameScreenState extends State<GameScreen> {
         MaterialPageRoute(
           builder: (context) => CreateGameScreen(
             onGameCreated: (title, description, htmlContent, imagePath) {
-              _editGame(index, title, description, htmlContent, imagePath);
+              _upsertGame(
+                index: index,
+                title: title,
+                description: description,
+                htmlContent: htmlContent,
+                imagePath: imagePath,
+              );
             },
             initialData: game, // 传递初始数据
           ),
@@ -111,6 +114,7 @@ class _GameScreenState extends State<GameScreen> {
       );
     } else if (action == 'delete') {
       _deleteGame(index);
+      _loadGames();
     }
   }
 
@@ -130,7 +134,12 @@ class _GameScreenState extends State<GameScreen> {
                   builder: (context) => CreateGameScreen(
                     onGameCreated:
                         (title, description, htmlContent, imagePath) {
-                      _addGame(title, description, htmlContent, imagePath);
+                      _upsertGame(
+                        title: title,
+                        description: description,
+                        htmlContent: htmlContent,
+                        imagePath: imagePath,
+                      );
                     },
                   ),
                 ),
@@ -167,12 +176,24 @@ class _GameScreenState extends State<GameScreen> {
                         child: kIsWeb
                             ? Image.network(
                                 game['imagePath'],
-                                fit: BoxFit.cover, // 保持等比缩放，裁剪溢出部分
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(
+                                  Icons.broken_image,
+                                  size: 50,
+                                  color: Colors.grey,
+                                ),
                               )
-                            : Image.file(
-                                File(game['imagePath']),
-                                fit: BoxFit.cover, // 保持等比缩放，裁剪溢出部分
-                              ),
+                            : (File(game['imagePath']).existsSync()
+                                ? Image.file(
+                                    File(game['imagePath']),
+                                    fit: BoxFit.cover,
+                                  )
+                                : const Icon(
+                                    Icons.broken_image,
+                                    size: 50,
+                                    color: Colors.grey,
+                                  )),
                       ),
                     ),
                   ListTile(

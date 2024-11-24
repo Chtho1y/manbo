@@ -41,13 +41,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       final initialData = widget.initialData!;
       _gameTitleController.text = initialData['title'] ?? '';
       _gameDescriptionController.text = initialData['description'] ?? '';
-      _optimizationController.text = '';
+      _optimizationController.text = '你对游戏的优化建议...'; // 可以提供优化建议模板（可选）
       _imagePath = initialData['imagePath'];
-
-      // 预填充优化建议
-      if (initialData.containsKey('htmlContent')) {
-        _optimizationController.text = '你对游戏的优化建议...'; // 可以提供优化建议模板（可选）
-      }
     }
   }
 
