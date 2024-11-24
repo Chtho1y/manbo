@@ -33,6 +33,7 @@ dependencies:
   flutter_svg: ^1.0.0
   flutter_bloc: ^8.1.0
   webview_flutter: ^4.10.0
+  image_picker: ^0.8.7+4 
   dio: ^5.1.1
   sqflite: ^2.2.0
   path: ^1.8.3

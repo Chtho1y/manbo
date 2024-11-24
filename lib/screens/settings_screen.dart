@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
           content: TextField(
             controller: controller,
             obscureText: obscureText, // 是否脱敏显示
-            maxLength: 200,
+            maxLength: key == 'systemPrompt' ? 1000 : null,
             decoration: InputDecoration(
               hintText: hint,
               suffixIcon: IconButton(
@@ -81,7 +81,7 @@ class SettingsScreen extends StatelessWidget {
 
     // 当前选择的厂商和模型
     String? selectedVendor = prefs.getString('modelVendor') ?? 'OpenAI';
-    String? selectedModel = prefs.getString('modelName') ?? 'gpt-3.5-turbo';
+    String? selectedModel = prefs.getString('modelName') ?? 'gpt-4o-mini';
 
     await showDialog(
       context: context,

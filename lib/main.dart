@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'screens/chat_list_screen.dart';
+import 'package:manbo/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +42,7 @@ class MyAppState extends State<MyApp> {
       theme: ThemeData(primarySwatch: Colors.blue),
       darkTheme: ThemeData.dark(),
       themeMode: _themeMode,
-      home: ChatListScreen(),
+      home: const HomeScreen(),
     );
   }
 }
