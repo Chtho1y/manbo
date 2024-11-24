@@ -204,7 +204,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('对话'),
+        title: const Text('对话列表'),
         centerTitle: true,
         leading: Builder(
           builder: (context) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:manbo/screens/game_screen.dart';
 import 'chat_list_screen.dart';
 import 'character_screen.dart';
 
@@ -13,6 +14,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _tabs = [
+    const GameScreen(), // 游戏页面
     const CharacterScreen(), // 角色UGC页面
     const ChatListScreen(), // 对话页面
   ];
@@ -29,6 +31,10 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.gamepad),
+            label: '游戏',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.group_add),
             label: '广场',

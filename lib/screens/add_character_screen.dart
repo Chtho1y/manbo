@@ -78,7 +78,7 @@ class _AddCharacterScreenState extends State<AddCharacterScreen> {
                     maxLength: 1000, // 设置最大字符数
                     decoration: const InputDecoration(
                       labelText: '系统提示词',
-                      counterText: '', // 隐藏字符计数提示
+                      // counterText: '',
                     ),
                   ),
                   const SizedBox(height: 16),

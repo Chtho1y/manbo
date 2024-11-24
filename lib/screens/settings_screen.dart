@@ -53,9 +53,10 @@ class SettingsScreen extends StatelessWidget {
           content: TextField(
             controller: controller,
             obscureText: obscureText, // 是否脱敏显示
-            maxLength: key == 'systemPrompt' ? 1000 : null,
+            maxLength: 1000,
             decoration: InputDecoration(
               hintText: hint,
+              counterText: '',
               suffixIcon: IconButton(
                 icon: const Icon(Icons.clear),
                 onPressed: () {

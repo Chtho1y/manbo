@@ -91,7 +91,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('角色广场'),
+        title: const Text('游戏制作'),
         centerTitle: true,
         actions: [
           IconButton(
@@ -199,6 +199,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
               }
             },
             child: Card(
+              elevation: 4.0,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

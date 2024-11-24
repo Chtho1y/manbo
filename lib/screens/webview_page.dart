@@ -2,10 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class WebViewPage extends StatefulWidget {
-  final String url;
+  final String? url;
+  final String? htmlContent;
   final String title;
 
-  const WebViewPage({super.key, required this.url, required this.title});
+  /// 构造函数，用于加载 URL
+  const WebViewPage({
+    super.key,
+    required this.url,
+    required this.title,
+  }) : htmlContent = null;
+
+  /// 命名构造函数，用于加载 HTML 内容
+  const WebViewPage.fromHtml({
+    super.key,
+    required this.htmlContent,
+    required this.title,
+  }) : url = null;
 
   @override
   _WebViewPageState createState() => _WebViewPageState();
@@ -22,12 +35,12 @@ class _WebViewPageState extends State<WebViewPage> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (String url) {
+          onPageStarted: (_) {
             setState(() {
               _isLoading = true;
             });
           },
-          onPageFinished: (String url) {
+          onPageFinished: (_) {
             setState(() {
               _isLoading = false;
             });
@@ -37,7 +50,7 @@ class _WebViewPageState extends State<WebViewPage> {
               context: context,
               builder: (context) => AlertDialog(
                 title: const Text('Error'),
-                content: Text('An error occurred: \${error.description}'),
+                content: Text('An error occurred: ${error.description}'),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
@@ -48,8 +61,13 @@ class _WebViewPageState extends State<WebViewPage> {
             );
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+
+    if (widget.url != null) {
+      _controller.loadRequest(Uri.parse(widget.url!));
+    } else if (widget.htmlContent != null) {
+      _controller.loadHtmlString(widget.htmlContent!);
+    }
   }
 
   @override

@@ -83,16 +83,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final response = await Dio().post(
         apiEndpoint,
-        data: {
-          'model': modelName, // 动态加载模型名称
-          'messages': messages, // 消息上下文
-        },
         options: Options(
           headers: {
             'Authorization': 'Bearer $apiKey',
             'Content-Type': 'application/json',
           },
         ),
+        data: {
+          'model': modelName, // 动态加载模型名称
+          'messages': messages, // 消息上下文
+        },
       );
 
       return response.data['choices'][0]['message']['content'];
