@@ -24,9 +24,9 @@ class _CharacterScreenState extends State<CharacterScreen> {
 
   Future<String> _saveImageToLocalDirectory(String imagePath) async {
     try {
-      final directory = await getApplicationSupportDirectory();
+      final directory = await getExternalStorageDirectory();
       final imageName = imagePath.split('/').last;
-      final newImagePath = '${directory.path}/$imageName';
+      final newImagePath = '${directory?.path}/$imageName';
       final sourceFile = File(imagePath);
 
       if (await sourceFile.exists()) {
