@@ -261,7 +261,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
                           )
                         : const Icon(
                             Icons.image,
-                            size: 100,
+                            size: 192,
                             color: Colors.grey,
                           ),
                   ),
