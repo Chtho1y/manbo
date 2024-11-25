@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'add_character_screen.dart';
+import 'package:path_provider/path_provider.dart';
 
 class CharacterScreen extends StatefulWidget {
   const CharacterScreen({super.key});
@@ -19,6 +20,37 @@ class _CharacterScreenState extends State<CharacterScreen> {
   void initState() {
     super.initState();
     _loadChatRoles();
+  }
+
+  Future<String> _saveImageToLocalDirectory(String imagePath) async {
+    try {
+      final directory = await getApplicationSupportDirectory();
+      final imageName = imagePath.split('/').last;
+      final newImagePath = '${directory.path}/$imageName';
+      final sourceFile = File(imagePath);
+
+      if (await sourceFile.exists()) {
+        final newImageFile = await sourceFile.copy(newImagePath);
+        return newImageFile.path;
+      } else {
+        throw Exception('Source file does not exist');
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('错误'),
+          content: Text('保存图片失败。详细报错信息：($e)'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      rethrow;
+    }
   }
 
   Future<void> _loadChatRoles() async {
@@ -37,10 +69,12 @@ class _CharacterScreenState extends State<CharacterScreen> {
     await prefs.setString('chatRoles', rolesJson);
   }
 
-  void _addChatRole(String imagePath, String roleName, String systemPrompt) {
+  void _addChatRole(
+      String imagePath, String roleName, String systemPrompt) async {
+    final newPath = await _saveImageToLocalDirectory(imagePath);
     setState(() {
       chatRoles.add({
-        'imagePath': imagePath,
+        'imagePath': newPath,
         'roleName': roleName,
         'systemPrompt': systemPrompt,
         'isApplied': false,
@@ -63,6 +97,10 @@ class _CharacterScreenState extends State<CharacterScreen> {
   }
 
   void _deleteChatRole(int index) {
+    final imagePath = chatRoles[index]['imagePath'];
+    if (imagePath != null && File(imagePath).existsSync()) {
+      File(imagePath).deleteSync();
+    }
     setState(() {
       chatRoles.removeAt(index);
     });

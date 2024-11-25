@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:manbo/screens/create_game_screen.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:manbo/screens/webview_page.dart';
 
@@ -38,19 +39,51 @@ class _GameScreenState extends State<GameScreen> {
     await prefs.setString('games', gamesJson);
   }
 
+  Future<String> _saveImageToLocalDirectory(String imagePath) async {
+    try {
+      final directory = await getApplicationSupportDirectory();
+      final imageName = imagePath.split('/').last;
+      final newImagePath = '${directory.path}/$imageName';
+      final sourceFile = File(imagePath);
+
+      if (await sourceFile.exists()) {
+        final newImageFile = await sourceFile.copy(newImagePath);
+        return newImageFile.path;
+      } else {
+        throw Exception('Source file does not exist');
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('错误'),
+          content: Text('保存图片失败。详细报错信息：($e)'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+      rethrow;
+    }
+  }
+
   void _upsertGame({
     int? index,
     required String title,
     required String description,
     required String htmlContent,
     required String imagePath,
-  }) {
+  }) async {
+    final newPath = await _saveImageToLocalDirectory(imagePath); // 持久化存储图片
     setState(() {
       final game = {
         'title': title,
         'description': description,
         'htmlContent': htmlContent,
-        'imagePath': imagePath,
+        'imagePath': newPath, // 保存新路径
       };
       if (index != null) {
         games[index] = game;
@@ -62,6 +95,10 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _deleteGame(int index) {
+    final imagePath = games[index]['imagePath'];
+    if (imagePath != null && File(imagePath).existsSync()) {
+      File(imagePath).deleteSync();
+    }
     setState(() {
       games.removeAt(index);
     });
