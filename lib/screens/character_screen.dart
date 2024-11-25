@@ -22,13 +22,8 @@ class _CharacterScreenState extends State<CharacterScreen> {
     _loadChatRoles();
   }
 
-  Future<String> _saveImageToLocalDirectory(String? imagePath) async {
-    final defaultImagedirectory = await getApplicationDocumentsDirectory();
-    final defaultImagePath = '${defaultImagedirectory.path}/default_image.png';
+  Future<String> _saveImageToLocalDirectory(String imagePath) async {
     try {
-      if (imagePath == null || imagePath.isEmpty) {
-        return defaultImagePath;
-      }
       final directory = await getExternalStorageDirectory();
       final imageName = imagePath.split('/').last;
       final newImagePath = '${directory?.path}/$imageName';
@@ -37,14 +32,11 @@ class _CharacterScreenState extends State<CharacterScreen> {
         final newImageFile = await sourceFile.copy(newImagePath);
         return newImageFile.path;
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('该图片不受支持，使用默认图片。')),
-        );
-        return defaultImagePath;
+        return '';
       }
     } catch (e) {
       debugPrint('保存图片失败: $e');
-      return defaultImagePath;
+      return '';
     }
   }
 
