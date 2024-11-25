@@ -245,36 +245,51 @@ class _CharacterScreenState extends State<CharacterScreen> {
             },
             child: Card(
               elevation: 4.0,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: AspectRatio(
-                        aspectRatio: 1.0,
-                        child: role['imagePath'] != null &&
-                                role['imagePath'].isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(8.0),
-                                child: _buildImageWidget(role['imagePath']),
-                              )
-                            : const Icon(
-                                Icons.image,
-                                color: Colors.transparent,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 1.0,
+                      child: Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8.0),
+                            child: role['imagePath'] != null &&
+                                    role['imagePath'].isNotEmpty
+                                ? _buildImageWidget(role['imagePath'])
+                                : const Icon(
+                                    Icons.image,
+                                    color: Colors.transparent,
+                                  ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              color: Colors.black.withOpacity(0.3),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 4.0, horizontal: 8.0),
+                              child: Text(
+                                role['roleName'],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      role['roleName'],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
