@@ -62,21 +62,28 @@ class _CharacterScreenState extends State<CharacterScreen> {
     required String roleName,
     required String systemPrompt,
   }) async {
-    final newPath = await _saveImageToLocalDirectory(imagePath);
+    String newPath;
     if (index != null) {
       final oldImagePath = chatRoles[index]['imagePath'];
-      if (oldImagePath != null && oldImagePath != newPath) {
-        final oldImageFile = File(oldImagePath);
-        if (await oldImageFile.exists()) {
-          try {
-            await oldImageFile.delete();
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('删除旧图片文件时出错: $e')),
-            );
+      if (oldImagePath != null && oldImagePath == imagePath) {
+        newPath = oldImagePath;
+      } else {
+        newPath = await _saveImageToLocalDirectory(imagePath);
+        if (oldImagePath != null && oldImagePath != newPath) {
+          final oldImageFile = File(oldImagePath);
+          if (await oldImageFile.exists()) {
+            try {
+              await oldImageFile.delete();
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('删除旧图片文件时出错: $e')),
+              );
+            }
           }
         }
       }
+    } else {
+      newPath = await _saveImageToLocalDirectory(imagePath);
     }
     setState(() {
       final chatRole = {
@@ -85,13 +92,13 @@ class _CharacterScreenState extends State<CharacterScreen> {
         'systemPrompt': systemPrompt,
         'isApplied': false,
       };
+
       if (index != null) {
         chatRoles[index] = chatRole;
       } else {
         chatRoles.add(chatRole);
       }
     });
-
     _saveChatRoles();
   }
 

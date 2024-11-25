@@ -64,21 +64,28 @@ class _GameScreenState extends State<GameScreen> {
     required String htmlContent,
     required String imagePath,
   }) async {
-    final newPath = await _saveImageToLocalDirectory(imagePath);
+    String newPath;
     if (index != null) {
       final oldImagePath = games[index]['imagePath'];
-      if (oldImagePath != null && oldImagePath != newPath) {
-        final oldImageFile = File(oldImagePath);
-        if (await oldImageFile.exists()) {
-          try {
-            await oldImageFile.delete();
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('删除旧图片文件时出错: $e')),
-            );
+      if (oldImagePath != null && oldImagePath == imagePath) {
+        newPath = oldImagePath;
+      } else {
+        newPath = await _saveImageToLocalDirectory(imagePath);
+        if (oldImagePath != null && oldImagePath != newPath) {
+          final oldImageFile = File(oldImagePath);
+          if (await oldImageFile.exists()) {
+            try {
+              await oldImageFile.delete();
+            } catch (e) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('删除旧图片文件时出错: $e')),
+              );
+            }
           }
         }
       }
+    } else {
+      newPath = await _saveImageToLocalDirectory(imagePath);
     }
     setState(() {
       final game = {
@@ -87,6 +94,7 @@ class _GameScreenState extends State<GameScreen> {
         'htmlContent': htmlContent,
         'imagePath': newPath,
       };
+
       if (index != null) {
         games[index] = game;
       } else {
