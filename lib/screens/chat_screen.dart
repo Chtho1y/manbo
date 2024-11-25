@@ -101,7 +101,7 @@ class _ChatScreenState extends State<ChatScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('错误'),
-          content: Text('无法获取回复，如果模型设置正常，请换句话或稍后重试。详细报错信息：($e)'),
+          content: Text('无法获取回复，如果模型设置正常，请换句话或稍后重试。详细信息：($e)'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

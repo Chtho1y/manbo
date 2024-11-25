@@ -39,34 +39,30 @@ class _GameScreenState extends State<GameScreen> {
     await prefs.setString('games', gamesJson);
   }
 
-  Future<String> _saveImageToLocalDirectory(String imagePath) async {
+  Future<String> _saveImageToLocalDirectory(String? imagePath) async {
+    const defaultImagePath = 'assets/images/default_image.svg';
     try {
+      if (imagePath == null || imagePath.isEmpty) {
+        return defaultImagePath;
+      }
       final directory = await getExternalStorageDirectory();
       final imageName = imagePath.split('/').last;
       final newImagePath = '${directory?.path}/$imageName';
       final sourceFile = File(imagePath);
-
       if (await sourceFile.exists()) {
         final newImageFile = await sourceFile.copy(newImagePath);
         return newImageFile.path;
       } else {
-        throw Exception('源文件不存在！');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('该图片不受支持，使用默认图片。')),
+        );
+        return defaultImagePath;
       }
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('错误'),
-          content: Text('保存图片失败。详细报错信息：($e)'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-      rethrow;
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   SnackBar(content: Text('保存图片失败: $e')),
+      // );
+      return defaultImagePath;
     }
   }
 
