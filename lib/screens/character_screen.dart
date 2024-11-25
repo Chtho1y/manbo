@@ -248,22 +248,23 @@ class _CharacterScreenState extends State<CharacterScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: role['imagePath'] != null &&
-                            role['imagePath'].isNotEmpty
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: AspectRatio(
-                              aspectRatio: 1.0,
-                              child: _buildImageWidget(role['imagePath']),
-                            ),
-                          )
-                        : const Icon(
-                            Icons.image,
-                            size: 192,
-                            color: Colors.grey,
-                          ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: role['imagePath'] != null &&
+                                role['imagePath'].isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8.0),
+                                child: _buildImageWidget(role['imagePath']),
+                              )
+                            : const Icon(
+                                Icons.image,
+                                color: Colors.transparent,
+                              ),
+                      ),
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
