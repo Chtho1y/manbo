@@ -71,7 +71,7 @@ flutter:
   assets:
     - assets/images/icon_send.svg
     - assets/images/icon_send_white.svg
-    - assets/images/default_image.svg
+    - assets/images/default_image.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -23,7 +23,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
   }
 
   Future<String> _saveImageToLocalDirectory(String? imagePath) async {
-    const defaultImagePath = 'assets/images/default_image.svg';
+    const defaultImagePath = 'assets/images/default_image.png';
     try {
       if (imagePath == null || imagePath.isEmpty) {
         return defaultImagePath;

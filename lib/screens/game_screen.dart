@@ -40,7 +40,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<String> _saveImageToLocalDirectory(String? imagePath) async {
-    const defaultImagePath = 'assets/images/default_image.svg';
+    const defaultImagePath = 'assets/images/default_image.png';
     try {
       if (imagePath == null || imagePath.isEmpty) {
         return defaultImagePath;
