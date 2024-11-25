@@ -50,7 +50,7 @@ class _GameScreenState extends State<GameScreen> {
         final newImageFile = await sourceFile.copy(newImagePath);
         return newImageFile.path;
       } else {
-        throw Exception('Source file does not exist');
+        throw Exception('源文件不存在！');
       }
     } catch (e) {
       showDialog(
@@ -77,13 +77,28 @@ class _GameScreenState extends State<GameScreen> {
     required String htmlContent,
     required String imagePath,
   }) async {
-    final newPath = await _saveImageToLocalDirectory(imagePath); // 持久化存储图片
+    final newPath = await _saveImageToLocalDirectory(imagePath);
+    if (index != null) {
+      final oldImagePath = games[index]['imagePath'];
+      if (oldImagePath != null && oldImagePath != newPath) {
+        final oldImageFile = File(oldImagePath);
+        if (await oldImageFile.exists()) {
+          try {
+            await oldImageFile.delete();
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('删除旧图片文件时出错: $e')),
+            );
+          }
+        }
+      }
+    }
     setState(() {
       final game = {
         'title': title,
         'description': description,
         'htmlContent': htmlContent,
-        'imagePath': newPath, // 保存新路径
+        'imagePath': newPath,
       };
       if (index != null) {
         games[index] = game;

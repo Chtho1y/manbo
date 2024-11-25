@@ -33,7 +33,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
         final newImageFile = await sourceFile.copy(newImagePath);
         return newImageFile.path;
       } else {
-        throw Exception('Source file does not exist');
+        throw Exception('源文件不存在！');
       }
     } catch (e) {
       showDialog(
@@ -69,30 +69,42 @@ class _CharacterScreenState extends State<CharacterScreen> {
     await prefs.setString('chatRoles', rolesJson);
   }
 
-  void _addChatRole(
-      String imagePath, String roleName, String systemPrompt) async {
+  void _upsertChatRole({
+    int? index,
+    required String imagePath,
+    required String roleName,
+    required String systemPrompt,
+  }) async {
     final newPath = await _saveImageToLocalDirectory(imagePath);
+    if (index != null) {
+      final oldImagePath = chatRoles[index]['imagePath'];
+      if (oldImagePath != null && oldImagePath != newPath) {
+        final oldImageFile = File(oldImagePath);
+        if (await oldImageFile.exists()) {
+          try {
+            await oldImageFile.delete();
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('删除旧图片文件时出错: $e')),
+            );
+          }
+        }
+      }
+    }
     setState(() {
-      chatRoles.add({
+      final chatRole = {
         'imagePath': newPath,
         'roleName': roleName,
         'systemPrompt': systemPrompt,
         'isApplied': false,
-      });
-    });
-    _saveChatRoles();
-  }
-
-  void _updateChatRole(
-      int index, String imagePath, String roleName, String systemPrompt) {
-    setState(() {
-      chatRoles[index] = {
-        'imagePath': imagePath,
-        'roleName': roleName,
-        'systemPrompt': systemPrompt,
-        'isApplied': false,
       };
+      if (index != null) {
+        chatRoles[index] = chatRole;
+      } else {
+        chatRoles.add(chatRole);
+      }
     });
+
     _saveChatRoles();
   }
 
@@ -140,7 +152,11 @@ class _CharacterScreenState extends State<CharacterScreen> {
                 MaterialPageRoute(
                   builder: (context) => AddCharacterScreen(
                     onAddRole: (imagePath, roleName, systemPrompt) {
-                      _addChatRole(imagePath, roleName, systemPrompt);
+                      _upsertChatRole(
+                        imagePath: imagePath,
+                        roleName: roleName,
+                        systemPrompt: systemPrompt,
+                      );
                     },
                   ),
                 ),
@@ -167,7 +183,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
                 final prefs = await SharedPreferences.getInstance();
                 await prefs.setString('systemPrompt', systemPrompt);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('角色 $roleName 系统提示词已应用')),
+                  SnackBar(content: Text('角色“$roleName”已应用，快去发起对话吧~')),
                 );
               }
             },
@@ -202,8 +218,12 @@ class _CharacterScreenState extends State<CharacterScreen> {
                   MaterialPageRoute(
                     builder: (context) => AddCharacterScreen(
                       onAddRole: (imagePath, roleName, systemPrompt) {
-                        _updateChatRole(
-                            index, imagePath, roleName, systemPrompt);
+                        _upsertChatRole(
+                          index: index,
+                          imagePath: imagePath,
+                          roleName: roleName,
+                          systemPrompt: systemPrompt,
+                        );
                       },
                       isEditing: true,
                       initialRoleName: role['roleName'],

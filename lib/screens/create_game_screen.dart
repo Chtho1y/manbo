@@ -92,7 +92,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 
       final content = originalHtml == null
           ? '[游戏名称：$title\n游戏需求描述为：$description]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
-          : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在根据优化建议继续迭代该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头';
+          : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在参考优化建议继续迭代游戏的HTML代码，输出修改后的完整单文件HTML代码，以"<!DOCTYPE html>"开头';
 
       final response = await Dio().post(
         apiEndpoint,
@@ -108,7 +108,68 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             {
               'role': 'system',
               'content': '''
+**Task**：
+根据用户的游戏开发需求，生成一个完整的、非常适合运行在移动设备的单文件HTML代码。输出应包括完整的HTML标记、相关标签、必要的CSS和完整的JavaScript代码。
 
+**指导原则**：
+1. **理解用户需求**：
+   - 仔细阅读用户的游戏开发要求。
+   - 确定核心游戏机制、目标和任何特定功能。
+
+2. **分步骤思考和规划**：
+   - **结构规划**：确定需要的HTML结构，包括`<head>`、`<body>`、`<script>`和`<style>`标签。
+   - **功能规划**：列出需要实现的功能，如事件监听、游戏循环等。
+
+3. **代码实现**：
+   - **HTML**：
+     - 使用语义化的HTML标签，确保结构清晰。
+     - 所有的图片标签`<img>`都应包含`alt`文本，描述图片的风格和主题，并包含`width`和`height`属性。
+     - 例子：
+       ```html
+       <img alt="sunset over a pond, film photograph, 1970" src="sunset.jpg" width="600" height="400">
+       ```
+   - **CSS**：
+     - 使用精简且有效的CSS来绘制和动画视觉元素。
+     - 确保样式与游戏主题一致。
+   - **JavaScript**：
+     - 只在需要时使用`<script>`标签，不要留下占位符注释。
+     - 编写可运行的代码，保持代码高效有意义。
+     - 使用ES6+特性，提升代码质量和可读性。
+
+4. **交互性**：
+   - 如果输出包含输入字段，确保它们位于`<form>`元素内，且表单具有`method="GET"`和适当的`action`属性。
+   - 确保用户可以输入数据，并在下一次请求中接收到他们的自由输入。
+
+5. **链接和导航**：
+   - 为页面添加与内容相关的内部链接，使用完整的`href="https://example.com/"`格式。
+   - 避免使用`href="#"`的链接。
+   - 创造性地使用域名层次结构或URL参数，使网站内容与用户的上下文和意图相关。
+
+6. **自我检查和纠错**：
+   - 在完成代码后，仔细审查，确保没有语法错误或逻辑漏洞。
+   - 测试主要功能，确保游戏可以正常运行。
+   - 如果发现问题，及时修正，确保用户得到的是高质量的、可完美运行的代码。
+   - 绝对不可以用任何方式省略任何代码！即使是复用的内容也不可以省略，确保输出完整的逻辑！
+
+**示例结构**：
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>游戏标题</title>
+    <style>
+        /* 在这里添加CSS样式 */
+    </style>
+</head>
+<body>
+    <!-- 在这里添加HTML元素 -->
+    <script>
+        // 在这里添加JavaScript代码
+    </script>
+</body>
+</html>
+```
 '''
             },
             {'role': 'user', 'content': content},
@@ -282,10 +343,6 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
               ),
             ),
           ),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
           Padding(
             padding:
                 const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -298,9 +355,14 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
                   },
                   child: const Text('取消'),
                 ),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: CircularProgressIndicator(),
+                  ),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _onGenerateGame,
-                  child: const Text('生成游戏'),
+                  child: const Text('生成'),
                 ),
               ],
             ),
