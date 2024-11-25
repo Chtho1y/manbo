@@ -23,7 +23,8 @@ class _CharacterScreenState extends State<CharacterScreen> {
   }
 
   Future<String> _saveImageToLocalDirectory(String? imagePath) async {
-    const defaultImagePath = 'assets/images/default_image.png';
+    final defaultImagedirectory = await getApplicationDocumentsDirectory();
+    final defaultImagePath = '${defaultImagedirectory.path}/default_image.png';
     try {
       if (imagePath == null || imagePath.isEmpty) {
         return defaultImagePath;
@@ -42,9 +43,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
         return defaultImagePath;
       }
     } catch (e) {
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   SnackBar(content: Text('保存图片失败: $e')),
-      // );
+      debugPrint('保存图片失败: $e');
       return defaultImagePath;
     }
   }
