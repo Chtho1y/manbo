@@ -282,11 +282,16 @@ class _GameScreenState extends State<GameScreen> {
             return GestureDetector(
               onLongPress: () => _showBottomSheet(index), // 支持长按操作
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(12.0), // 确保圆角与卡片一致
                 child: Stack(
+                  clipBehavior: Clip.hardEdge, // 确保子组件的内容被限制在边界内
                   children: [
                     Card(
+                      margin: EdgeInsets.zero, // 移除卡片默认的内边距
                       elevation: 4.0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -332,7 +337,7 @@ class _GameScreenState extends State<GameScreen> {
                         ],
                       ),
                     ),
-                    if (isGenerating && !isFailed) // 确保加载状态仅在未失败时显示
+                    if (isGenerating && !isFailed)
                       Positioned.fill(
                         child: Container(
                           color: Colors.black.withOpacity(0.5),
