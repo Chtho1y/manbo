@@ -280,18 +280,32 @@ class _GameScreenState extends State<GameScreen> {
             final isFailed = game['isFailed'] ?? false;
 
             return GestureDetector(
-              onLongPress: () => _showBottomSheet(index), // 支持长按操作
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12.0), // 确保圆角与卡片一致
-                child: Stack(
-                  clipBehavior: Clip.hardEdge, // 确保子组件的内容被限制在边界内
-                  children: [
-                    Card(
-                      margin: EdgeInsets.zero, // 移除卡片默认的内边距
-                      elevation: 4.0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.0),
+              onTap: () {
+                if (!game['isGenerating'] &&
+                    !game['isFailed'] &&
+                    game['htmlContent'].isNotEmpty) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WebViewPage.fromHtml(
+                        htmlContent: game['htmlContent'],
+                        title: game['title'],
                       ),
+                    ),
+                  );
+                }
+              },
+              onLongPress: () => _showBottomSheet(index), // 支持长按操作
+              child: Stack(
+                clipBehavior: Clip.hardEdge, // 确保子组件的内容被限制在边界内
+                children: [
+                  Card(
+                    elevation: 4.0, // 恢复阴影效果
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0), // 确保圆角一致
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12.0), // 裁剪内容圆角
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -337,32 +351,32 @@ class _GameScreenState extends State<GameScreen> {
                         ],
                       ),
                     ),
-                    if (isGenerating && !isFailed)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.black.withOpacity(0.5),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                            ),
+                  ),
+                  if (isGenerating && !isFailed)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
                           ),
                         ),
                       ),
-                    if (isFailed)
-                      Positioned.fill(
-                        child: Container(
-                          color: Colors.black.withOpacity(0.5),
-                          child: const Center(
-                            child: Icon(
-                              Icons.error_outline,
-                              color: Colors.red,
-                              size: 50,
-                            ),
+                    ),
+                  if (isFailed)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withOpacity(0.5),
+                        child: const Center(
+                          child: Icon(
+                            Icons.error_outline,
+                            color: Colors.red,
+                            size: 50,
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             );
           },
