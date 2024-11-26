@@ -28,10 +28,12 @@ class MyAppState extends State<MyApp> {
 
   MyAppState() : _themeMode = ThemeMode.light;
 
-  void setTheme(ThemeMode themeMode) {
+  void setTheme(ThemeMode themeMode) async {
+    final prefs = await SharedPreferences.getInstance();
     setState(() {
       _themeMode = themeMode;
     });
+    await prefs.setBool('isDarkMode', themeMode == ThemeMode.dark);
   }
 
   @override
@@ -39,8 +41,28 @@ class MyAppState extends State<MyApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'manbo',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      darkTheme: ThemeData.dark(),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.light(
+          primary: Colors.black, // 主色为黑色，适配亮色模式
+          onPrimary: const Color(0xFFF3F5F8), // 主色上的文字或图标
+          surface: Colors.white, // 卡片等表面颜色
+        ),
+        scaffoldBackgroundColor: Colors.white, // 页面背景色
+      ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.dark(
+          primary: Colors.white, // 主色为白色，适配暗黑模式
+          onPrimary: Colors.black, // 主色上的文字或图标
+          surface: const Color(0xFF121212), // 卡片等表面颜色
+        ),
+        scaffoldBackgroundColor: Colors.black, // 页面背景色
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          selectedItemColor: Color(0xFFFFF1C2), // 暗黑模式导航栏高亮颜色
+          unselectedItemColor: Colors.white,
+        ),
+      ),
       themeMode: _themeMode,
       home: const HomeScreen(),
     );
