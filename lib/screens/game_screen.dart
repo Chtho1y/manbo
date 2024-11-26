@@ -96,8 +96,8 @@ class _GameScreenState extends State<GameScreen> {
         'description': description,
         'htmlContent': htmlContent,
         'imagePath': newPath,
-        'isGenerating': htmlContent.isEmpty, // 判断是否正在生成
-        'isFailed': isFailed, // 失败状态字段
+        'isGenerating': isGenerating,
+        'isFailed': isFailed,
       };
 
       if (index != null) {
@@ -233,10 +233,9 @@ class _GameScreenState extends State<GameScreen> {
                   builder: (context) => CreateGameScreen(
                     onGameCreated:
                         (title, description, htmlContent, imagePath) {
-                      // 检查是否已经存在该任务，避免重复添加
-                      final existingIndex = games.indexWhere((game) =>
-                          game['title'] == title &&
-                          game['isGenerating'] == true);
+                      final existingIndex = games.indexWhere(
+                        (game) => game['title'] == title,
+                      );
 
                       if (existingIndex == -1) {
                         _upsertGame(
@@ -246,6 +245,16 @@ class _GameScreenState extends State<GameScreen> {
                           imagePath: imagePath,
                           isGenerating: htmlContent.isEmpty,
                           isFailed: false,
+                        );
+                      } else {
+                        _upsertGame(
+                          index: existingIndex,
+                          title: title,
+                          description: description,
+                          htmlContent: htmlContent,
+                          imagePath: imagePath,
+                          isGenerating: htmlContent.isEmpty,
+                          isFailed: htmlContent.isEmpty,
                         );
                       }
                     },
@@ -323,7 +332,7 @@ class _GameScreenState extends State<GameScreen> {
                         ],
                       ),
                     ),
-                    if (isGenerating)
+                    if (isGenerating && !isFailed) // 确保加载状态仅在未失败时显示
                       Positioned.fill(
                         child: Container(
                           color: Colors.black.withOpacity(0.5),

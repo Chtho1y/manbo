@@ -89,50 +89,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             ],
           ),
         );
-        return '''
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>错误提示</title>
-    <style>
-        body {
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        .message-container {
-            text-align: center;
-            padding: 20px;
-            border: 1px solid #ccc;
-            background-color: #fff;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-        .message-container h1 {
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
-        .message-container p {
-            font-size: 16px;
-            margin: 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="message-container">
-        <h1>游戏生成失败</h1>
-        <p>API 调用地址、密钥或模型名称未设置，请在设置页面填写。</p>
-    </div>
-</body>
-</html>
-''';
+        return '';
       }
 
       final content = originalHtml == null
