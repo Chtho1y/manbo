@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -180,19 +181,19 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         children: [
           ListTile(
-            leading: const Icon(Icons.settings),
+            leading: const Icon(FeatherIcons.layers),
             title: const Text('系统提示'),
             onTap: () =>
                 _setValue(context, 'systemPrompt', '设置系统提示词', '请输入新的系统提示词'),
           ),
           ListTile(
-            leading: const Icon(Icons.api),
+            leading: const Icon(FeatherIcons.activity),
             title: const Text('设置 API 调用地址'),
             onTap: () => _setValue(
                 context, 'apiEndpoint', '设置 API 调用地址', '请输入新的 API 调用地址'),
           ),
           ListTile(
-            leading: const Icon(Icons.key),
+            leading: const Icon(FeatherIcons.key),
             title: const Text('设置 API 密钥'),
             onTap: () => _setValue(
               context,
@@ -203,13 +204,17 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.model_training),
+            leading: const Icon(FeatherIcons.cpu),
             title: const Text('选择模型'),
             onTap: () => _setModel(context), // 模型选择
           ),
           ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('暗黑模式'),
+            leading: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? FeatherIcons.moon // 暗色模式
+                  : FeatherIcons.sun, // 亮色模式
+            ),
+            title: const Text('主题模式'),
             trailing: Switch(
               value: Theme.of(context).brightness == Brightness.dark,
               onChanged: (bool value) async {

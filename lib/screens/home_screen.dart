@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/screens/game_screen.dart';
 import 'chat_list_screen.dart';
 import 'character_screen.dart';
@@ -64,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           children: [
             ListTile(
-              leading: const Icon(Icons.settings),
+              leading: const Icon(FeatherIcons.settings),
               title: const Text('基础设置'),
               onTap: () {
                 Navigator.push(
@@ -76,17 +77,17 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.lock),
+              leading: const Icon(FeatherIcons.lock),
               title: const Text('隐私政策'),
               onTap: () => _openPrivacyPolicyPage(context),
             ),
             ListTile(
-              leading: const Icon(Icons.assignment),
+              leading: const Icon(FeatherIcons.fileText),
               title: const Text('用户协议'),
               onTap: () => _openUserAgreementPage(context),
             ),
             ListTile(
-              leading: const Icon(Icons.info),
+              leading: const Icon(FeatherIcons.info),
               title: const Text('关于我们'),
               onTap: () => _openAboutPage(context),
             ),
@@ -101,18 +102,21 @@ class _HomeScreenState extends State<HomeScreen> {
             _currentIndex = index;
           });
         },
+        showSelectedLabels: false, // 隐藏选中项的标签
+        showUnselectedLabels: false, // 隐藏未选中项的标签
+        iconSize: 32.0, // 设置图标大小
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.gamepad),
-            label: '游戏',
+            icon: Icon(FeatherIcons.star),
+            label: '', // 游戏
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.group_add),
-            label: '广场',
+            icon: Icon(FeatherIcons.plusCircle),
+            label: '', // 角色
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: '对话',
+            icon: Icon(FeatherIcons.messageCircle),
+            label: '', // 对话
           ),
         ],
       ),

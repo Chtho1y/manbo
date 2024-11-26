@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'add_character_screen.dart';
@@ -139,7 +140,7 @@ class _CharacterScreenState extends State<CharacterScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(FeatherIcons.plus),
             onPressed: () {
               Navigator.push(
                 context,

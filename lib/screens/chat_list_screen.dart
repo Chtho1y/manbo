@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/screens/webview_page.dart';
 import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
@@ -213,7 +214,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(FeatherIcons.plus),
             onPressed: _startNewChat,
           ),
         ],
