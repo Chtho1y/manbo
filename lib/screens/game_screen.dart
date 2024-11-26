@@ -171,6 +171,12 @@ class _GameScreenState extends State<GameScreen> {
       appBar: AppBar(
         title: const Text('游戏制作'),
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),

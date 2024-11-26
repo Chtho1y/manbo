@@ -4,7 +4,6 @@ import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
 import '../models/chat.dart';
 import 'chat_screen.dart';
-import 'settings_screen.dart'; // 引入新创建的设置页面
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -206,92 +205,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
       appBar: AppBar(
         title: const Text('对话列表'),
         centerTitle: true,
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                Scaffold.of(context).openDrawer(); // 打开抽屉菜单
-              },
-            );
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
           },
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _startNewChat, // 新建对话
+            onPressed: _startNewChat,
           ),
         ],
-      ),
-      drawer: Drawer(
-        child: FractionallySizedBox(
-          widthFactor: 1,
-          child: ListView(
-            children: [
-              // Container(
-              //   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              //   decoration: BoxDecoration(
-              //     color: Colors.blue,
-              //   ),
-              //   height: 40.0,
-              //   child: Align(
-              //     alignment: Alignment.centerLeft,
-              //     child: Text(
-              //       '选项',
-              //       style: TextStyle(
-              //         color: Colors.white,
-              //         fontSize: 24,
-              //       ),
-              //     ),
-              //   ),
-              // ),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: const Text('基础设置'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.lock),
-                title: const Text('隐私政策'),
-                onTap: () => _openPrivacyPolicyPage(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.assignment),
-                title: const Text('用户协议'),
-                onTap: () => _openUserAgreementPage(context),
-              ),
-              ListTile(
-                leading: const Icon(Icons.info),
-                title: const Text('关于我们'),
-                onTap: () => _openAboutPage(context),
-              ),
-            ],
-          ),
-        ),
       ),
       body: ListView.builder(
         itemCount: chats.length,
         itemBuilder: (context, index) {
-          return GestureDetector(
-            onLongPress: () => _onLongPress(chats[index]),
-            child: ListTile(
-              title: Text(chats[index].name),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ChatScreen(chat: chats[index]),
-                  ),
-                );
-              },
-            ),
+          return ListTile(
+            title: Text(chats[index].name),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatScreen(chat: chats[index]),
+                ),
+              );
+            },
           );
         },
       ),
