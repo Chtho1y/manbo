@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/screens/create_game_screen.dart';
@@ -68,6 +67,16 @@ class _GameScreenState extends State<GameScreen> {
     bool isFailed = false,
   }) async {
     String newPath;
+    double aspectRatio = 16 / 9; // 默认宽高比
+
+    try {
+      final decodedImage =
+          await decodeImageFromList(File(imagePath).readAsBytesSync());
+      aspectRatio = decodedImage.width / decodedImage.height;
+    } catch (e) {
+      debugPrint('获取图片宽高比失败: $e');
+    }
+
     if (index != null) {
       final oldImagePath = games[index]['imagePath'];
       if (oldImagePath != null && oldImagePath == imagePath) {
@@ -90,6 +99,7 @@ class _GameScreenState extends State<GameScreen> {
     } else {
       newPath = await _saveImageToLocalDirectory(imagePath);
     }
+
     setState(() {
       final game = {
         'title': title,
@@ -98,6 +108,7 @@ class _GameScreenState extends State<GameScreen> {
         'imagePath': newPath,
         'isGenerating': isGenerating,
         'isFailed': isFailed,
+        'aspectRatio': aspectRatio,
       };
 
       if (index != null) {
@@ -118,18 +129,6 @@ class _GameScreenState extends State<GameScreen> {
       games.removeAt(index);
     });
     _saveGames();
-  }
-
-  Future<Size> _getImageSize(String imagePath) async {
-    try {
-      final image = File(imagePath);
-      final decodedImage = await decodeImageFromList(image.readAsBytesSync());
-      return Size(
-          decodedImage.width.toDouble(), decodedImage.height.toDouble());
-    } catch (e) {
-      // debugPrint('获取图片尺寸失败: $e');
-      return const Size(16.0, 9.0); // 默认宽高比为16:9
-    }
   }
 
   Future<void> _showBottomSheet(int index) async {
@@ -202,7 +201,6 @@ class _GameScreenState extends State<GameScreen> {
               );
             },
             initialData: game,
-            initialIndex: index, // 传递当前游戏索引
           ),
         ),
       );
@@ -213,175 +211,7 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('游戏制作'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(FeatherIcons.plus),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CreateGameScreen(
-                    onGameCreated:
-                        (title, description, htmlContent, imagePath) {
-                      final existingIndex = games.indexWhere(
-                        (game) => game['title'] == title,
-                      );
-
-                      if (existingIndex == -1) {
-                        _upsertGame(
-                          title: title,
-                          description: description,
-                          htmlContent: htmlContent,
-                          imagePath: imagePath,
-                          isGenerating: htmlContent.isEmpty,
-                          isFailed: false,
-                        );
-                      } else {
-                        _upsertGame(
-                          index: existingIndex,
-                          title: title,
-                          description: description,
-                          htmlContent: htmlContent,
-                          imagePath: imagePath,
-                          isGenerating: htmlContent.isEmpty,
-                          isFailed: htmlContent.isEmpty,
-                        );
-                      }
-                    },
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12.0,
-            mainAxisSpacing: 12.0,
-          ),
-          itemCount: games.length,
-          itemBuilder: (context, index) {
-            final game = games[index];
-            final isGenerating = game['isGenerating'] ?? false;
-            final isFailed = game['isFailed'] ?? false;
-
-            return GestureDetector(
-              onTap: () {
-                if (!game['isGenerating'] &&
-                    !game['isFailed'] &&
-                    game['htmlContent'].isNotEmpty) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WebViewPage.fromHtml(
-                        htmlContent: game['htmlContent'],
-                        title: game['title'],
-                      ),
-                    ),
-                  );
-                }
-              },
-              onLongPress: () => _showBottomSheet(index), // 支持长按操作
-              child: Stack(
-                clipBehavior: Clip.hardEdge, // 确保子组件的内容被限制在边界内
-                children: [
-                  Card(
-                    elevation: 4.0, // 恢复阴影效果
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0), // 确保圆角一致
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12.0), // 裁剪内容圆角
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (game['imagePath'] != null &&
-                              game['imagePath'].isNotEmpty)
-                            AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: kIsWeb
-                                  ? Image.network(
-                                      game['imagePath'],
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Icon(
-                                        Icons.broken_image,
-                                        size: 50,
-                                        color: Colors.grey,
-                                      ),
-                                    )
-                                  : (File(game['imagePath']).existsSync()
-                                      ? Image.file(
-                                          File(game['imagePath']),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : const Icon(
-                                          Icons.broken_image,
-                                          size: 50,
-                                          color: Colors.grey,
-                                        )),
-                            ),
-                          ListTile(
-                            title: Text(
-                              game['title'],
-                              style: const TextStyle(
-                                  fontSize: 16.0, fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              game['description'] ?? '',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (isGenerating && !isFailed)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withOpacity(0.5),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (isFailed)
-                    Positioned.fill(
-                      child: Container(
-                        color: Colors.black.withOpacity(0.5),
-                        child: const Center(
-                          child: Icon(
-                            Icons.error_outline,
-                            color: Colors.red,
-                            size: 50,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
-    );
+    // TODO: implement build
+    throw UnimplementedError();
   }
 }
