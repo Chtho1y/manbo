@@ -7,6 +7,7 @@ import 'package:manbo/screens/create_game_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:manbo/screens/webview_page.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -216,11 +217,13 @@ class _GameScreenState extends State<GameScreen> {
       appBar: AppBar(
         title: const Text('游戏制作'),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () {
-            Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
-          },
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
+            },
+          ),
         ),
         actions: [
           IconButton(
@@ -264,44 +267,74 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
+      drawer: Drawer(
+        // 您的侧边栏内容
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text(
+                '菜单',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            // 添加其他菜单项
+          ],
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: ListView(
-          children: [
-            Wrap(
-              spacing: 8.0,
-              runSpacing: 8.0,
-              children: games.map((game) {
-                final aspectRatio = game['aspectRatio'] ?? 16 / 9; // 默认宽高比
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cardWidth = (MediaQuery.of(context).size.width - 32) /
-                        2; // 动态计算卡片宽度
-                    final cardHeight = cardWidth / aspectRatio;
+        child: games.isEmpty
+            ? const Center(
+                child: Text('暂无游戏内容，点击右上角添加游戏'),
+              )
+            : MasonryGridView.builder(
+                gridDelegate:
+                    const SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, // 设置为两列
+                ),
+                mainAxisSpacing: 12.0,
+                crossAxisSpacing: 12.0,
+                itemCount: games.length,
+                itemBuilder: (context, index) {
+                  final game = games[index];
+                  final aspectRatio = game['aspectRatio'] ?? (16 / 9); // 默认宽高比
+                  final isGenerating = game['isGenerating'] ?? false;
+                  final isFailed = game['isFailed'] ?? false;
 
-                    return GestureDetector(
-                      onTap: () {
-                        if (!game['isGenerating'] &&
-                            !game['isFailed'] &&
-                            game['htmlContent'].isNotEmpty) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => WebViewPage.fromHtml(
-                                htmlContent: game['htmlContent'],
-                                title: game['title'],
-                              ),
+                  return GestureDetector(
+                    onTap: () {
+                      if (!isGenerating &&
+                          !isFailed &&
+                          (game['htmlContent'] as String).isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => WebViewPage.fromHtml(
+                              htmlContent: game['htmlContent'],
+                              title: game['title'],
                             ),
-                          );
-                        }
-                      },
-                      onLongPress: () => _showBottomSheet(games.indexOf(game)),
+                          ),
+                        );
+                      }
+                    },
+                    onLongPress: () => _showBottomSheet(index),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12.0),
                       child: Container(
-                        width: cardWidth,
-                        height: cardHeight,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.0,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.1),
@@ -310,21 +343,28 @@ class _GameScreenState extends State<GameScreen> {
                             ),
                           ],
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12.0),
-                          child: Stack(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  AspectRatio(
-                                    aspectRatio: aspectRatio,
+                        child: Stack(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 使用 AspectRatio 计算图片高度
+                                AspectRatio(
+                                  aspectRatio: aspectRatio,
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(12.0),
+                                      topRight: Radius.circular(12.0),
+                                    ),
                                     child: game['imagePath'] != null &&
-                                            game['imagePath'].isNotEmpty
+                                            (game['imagePath'] as String)
+                                                .isNotEmpty
                                         ? kIsWeb
                                             ? Image.network(
                                                 game['imagePath'],
                                                 fit: BoxFit.cover,
+                                                width: double.infinity,
+                                                height: double.infinity,
                                                 errorBuilder: (context, error,
                                                         stackTrace) =>
                                                     const Icon(
@@ -338,6 +378,16 @@ class _GameScreenState extends State<GameScreen> {
                                                 ? Image.file(
                                                     File(game['imagePath']),
                                                     fit: BoxFit.cover,
+                                                    width: double.infinity,
+                                                    height: double.infinity,
+                                                    errorBuilder: (context,
+                                                            error,
+                                                            stackTrace) =>
+                                                        const Icon(
+                                                      Icons.broken_image,
+                                                      size: 50,
+                                                      color: Colors.grey,
+                                                    ),
                                                   )
                                                 : const Icon(
                                                     Icons.broken_image,
@@ -350,59 +400,71 @@ class _GameScreenState extends State<GameScreen> {
                                             color: Colors.grey,
                                           ),
                                   ),
-                                  ListTile(
-                                    title: Text(
-                                      game['title'],
-                                      style: const TextStyle(
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.bold,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        game['title'],
+                                        style: const TextStyle(
+                                          fontSize: 16.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    subtitle: Text(
-                                      game['description'] ?? '',
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style:
-                                          const TextStyle(color: Colors.grey),
+                                      const SizedBox(height: 4.0),
+                                      Text(
+                                        game['description'] ?? '',
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            const TextStyle(color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Overlay for loading or error
+                            if (isGenerating && !isFailed)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                              if (game['isGenerating'] ?? false)
-                                Positioned.fill(
-                                  child: Container(
+                            if (isFailed)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
                                     color: Colors.black.withOpacity(0.5),
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                      ),
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 50,
                                     ),
                                   ),
                                 ),
-                              if (game['isFailed'] ?? false)
-                                Positioned.fill(
-                                  child: Container(
-                                    color: Colors.black.withOpacity(0.5),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.error_outline,
-                                        color: Colors.red,
-                                        size: 50,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
                       ),
-                    );
-                  },
-                );
-              }).toList(),
-            ),
-          ],
-        ),
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

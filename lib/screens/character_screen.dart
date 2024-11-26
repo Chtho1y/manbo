@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'add_character_screen.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class CharacterScreen extends StatefulWidget {
   const CharacterScreen({super.key});
@@ -64,6 +65,16 @@ class _CharacterScreenState extends State<CharacterScreen> {
     required String systemPrompt,
   }) async {
     String newPath;
+    double aspectRatio = 1.0; // 默认宽高比
+
+    try {
+      final decodedImage =
+          await decodeImageFromList(File(imagePath).readAsBytesSync());
+      aspectRatio = decodedImage.width / decodedImage.height;
+    } catch (e) {
+      debugPrint('获取图片宽高比失败: $e');
+    }
+
     if (index != null) {
       final oldImagePath = chatRoles[index]['imagePath'];
       if (oldImagePath != null && oldImagePath == imagePath) {
@@ -86,12 +97,14 @@ class _CharacterScreenState extends State<CharacterScreen> {
     } else {
       newPath = await _saveImageToLocalDirectory(imagePath);
     }
+
     setState(() {
       final chatRole = {
         'imagePath': newPath,
         'roleName': roleName,
         'systemPrompt': systemPrompt,
         'isApplied': false,
+        'aspectRatio': aspectRatio,
       };
 
       if (index != null) {
@@ -114,20 +127,101 @@ class _CharacterScreenState extends State<CharacterScreen> {
     _saveChatRoles();
   }
 
-  Widget _buildImageWidget(String imagePath) {
+  Future<void> _showBottomSheet(int index) async {
+    final role = chatRoles[index];
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('修改'),
+              onTap: () {
+                Navigator.pop(context, 'edit');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('删除'),
+              onTap: () {
+                Navigator.pop(context, 'delete');
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (action == 'edit') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddCharacterScreen(
+            onAddRole: (imagePath, roleName, systemPrompt) {
+              _upsertChatRole(
+                index: index,
+                imagePath: imagePath,
+                roleName: roleName,
+                systemPrompt: systemPrompt,
+              );
+            },
+            isEditing: true,
+            initialRoleName: role['roleName'],
+            initialSystemPrompt: role['systemPrompt'],
+            initialImagePath: role['imagePath'],
+          ),
+        ),
+      );
+    } else if (action == 'delete') {
+      final shouldDelete = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('删除角色'),
+          content: const Text('确定要删除这个角色吗？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldDelete == true) {
+        _deleteChatRole(index);
+      }
+    }
+  }
+
+  Widget _buildImageWidget(String imagePath, double aspectRatio) {
     if (kIsWeb) {
       return Image.network(
         imagePath,
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.broken_image,
+          size: 50,
+          color: Colors.grey,
+        ),
       );
     } else {
       return Image.file(
         File(imagePath),
-        fit: BoxFit.contain,
+        fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.broken_image,
+          size: 50,
+          color: Colors.grey,
+        ),
       );
     }
   }
@@ -160,148 +254,117 @@ class _CharacterScreenState extends State<CharacterScreen> {
           ),
         ],
       ),
-      body: GridView.builder(
+      body: Padding(
         padding: const EdgeInsets.all(8.0),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 8.0,
-          mainAxisSpacing: 8.0,
-        ),
-        itemCount: chatRoles.length,
-        itemBuilder: (context, index) {
-          final role = chatRoles[index];
-          return GestureDetector(
-            onTap: () async {
-              final systemPrompt = role['systemPrompt'];
-              final roleName = role['roleName'];
-              if (systemPrompt != null && systemPrompt.isNotEmpty) {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('systemPrompt', systemPrompt);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('角色“$roleName”已应用，快去发起对话吧~')),
-                );
-              }
-            },
-            onLongPress: () async {
-              final action = await showModalBottomSheet<String>(
-                context: context,
-                builder: (context) {
-                  return Wrap(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.edit),
-                        title: const Text('修改'),
-                        onTap: () {
-                          Navigator.pop(context, 'edit');
-                        },
+        child: chatRoles.isEmpty
+            ? const Center(
+                child: Text('暂无角色，点击右上角添加角色'),
+              )
+            : MasonryGridView.builder(
+                gridDelegate:
+                    const SliverSimpleGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, // 设置为两列
+                ),
+                mainAxisSpacing: 12.0,
+                crossAxisSpacing: 12.0,
+                itemCount: chatRoles.length,
+                itemBuilder: (context, index) {
+                  final role = chatRoles[index];
+                  final aspectRatio = role['aspectRatio'] ?? 1.0; // 默认宽高比
+                  final roleName = role['roleName'] ?? '角色名';
+                  final imagePath = role['imagePath'] ?? '';
+
+                  return GestureDetector(
+                    onTap: () async {
+                      final systemPrompt = role['systemPrompt'];
+                      final appliedRoleName = roleName;
+                      if (systemPrompt != null && systemPrompt.isNotEmpty) {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('systemPrompt', systemPrompt);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('角色“$appliedRoleName”已应用，快去发起对话吧~'),
+                          ),
+                        );
+                      }
+                    },
+                    onLongPress: () => _showBottomSheet(index),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 6.0,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 使用 LayoutBuilder 计算图片高度
+                                LayoutBuilder(
+                                  builder: (BuildContext context,
+                                      BoxConstraints constraints) {
+                                    final cardWidth =
+                                        (constraints.maxWidth - 0) /
+                                            1; // 1因为crossAxisCount=2
+                                    final imageHeight = cardWidth / aspectRatio;
+
+                                    return SizedBox(
+                                      width: double.infinity,
+                                      height: imageHeight,
+                                      child: ClipRRect(
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(12.0),
+                                          topRight: Radius.circular(12.0),
+                                        ),
+                                        child: imagePath.isNotEmpty
+                                            ? _buildImageWidget(
+                                                imagePath, aspectRatio)
+                                            : const Icon(
+                                                Icons.image,
+                                                size: 50,
+                                                color: Colors.grey,
+                                              ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Text(
+                                    roleName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 16.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // 这里可以添加覆盖层，例如加载中或错误状态等
+                          ],
+                        ),
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.delete),
-                        title: const Text('删除'),
-                        onTap: () {
-                          Navigator.pop(context, 'delete');
-                        },
-                      ),
-                    ],
+                    ),
                   );
                 },
-              );
-
-              if (action == 'edit') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AddCharacterScreen(
-                      onAddRole: (imagePath, roleName, systemPrompt) {
-                        _upsertChatRole(
-                          index: index,
-                          imagePath: imagePath,
-                          roleName: roleName,
-                          systemPrompt: systemPrompt,
-                        );
-                      },
-                      isEditing: true,
-                      initialRoleName: role['roleName'],
-                      initialSystemPrompt: role['systemPrompt'],
-                      initialImagePath: role['imagePath'],
-                    ),
-                  ),
-                );
-              } else if (action == 'delete') {
-                final shouldDelete = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('删除角色'),
-                    content: const Text('确定要删除这个角色吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('确定'),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (shouldDelete == true) {
-                  _deleteChatRole(index);
-                }
-              }
-            },
-            child: Card(
-              elevation: 4.0,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 1.0,
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: role['imagePath'] != null &&
-                                    role['imagePath'].isNotEmpty
-                                ? _buildImageWidget(role['imagePath'])
-                                : const Icon(
-                                    Icons.image,
-                                    color: Colors.transparent,
-                                  ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              color: Colors.black.withOpacity(0.3),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 4.0, horizontal: 8.0),
-                              child: Text(
-                                role['roleName'],
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14.0,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
               ),
-            ),
-          );
-        },
       ),
     );
   }
