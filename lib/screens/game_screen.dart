@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/screens/create_game_screen.dart';
@@ -211,7 +212,198 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    throw UnimplementedError();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('游戏制作'),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
+          },
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(FeatherIcons.plus),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreateGameScreen(
+                    onGameCreated:
+                        (title, description, htmlContent, imagePath) {
+                      final existingIndex = games.indexWhere(
+                        (game) => game['title'] == title,
+                      );
+
+                      if (existingIndex == -1) {
+                        _upsertGame(
+                          title: title,
+                          description: description,
+                          htmlContent: htmlContent,
+                          imagePath: imagePath,
+                          isGenerating: htmlContent.isEmpty,
+                          isFailed: false,
+                        );
+                      } else {
+                        _upsertGame(
+                          index: existingIndex,
+                          title: title,
+                          description: description,
+                          htmlContent: htmlContent,
+                          imagePath: imagePath,
+                          isGenerating: htmlContent.isEmpty,
+                          isFailed: htmlContent.isEmpty,
+                        );
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: ListView(
+          children: [
+            Wrap(
+              spacing: 8.0,
+              runSpacing: 8.0,
+              children: games.map((game) {
+                final aspectRatio = game['aspectRatio'] ?? 16 / 9; // 默认宽高比
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cardWidth = (MediaQuery.of(context).size.width - 32) /
+                        2; // 动态计算卡片宽度
+                    final cardHeight = cardWidth / aspectRatio;
+
+                    return GestureDetector(
+                      onTap: () {
+                        if (!game['isGenerating'] &&
+                            !game['isFailed'] &&
+                            game['htmlContent'].isNotEmpty) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WebViewPage.fromHtml(
+                                htmlContent: game['htmlContent'],
+                                title: game['title'],
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      onLongPress: () => _showBottomSheet(games.indexOf(game)),
+                      child: Container(
+                        width: cardWidth,
+                        height: cardHeight,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 6.0,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0),
+                          child: Stack(
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AspectRatio(
+                                    aspectRatio: aspectRatio,
+                                    child: game['imagePath'] != null &&
+                                            game['imagePath'].isNotEmpty
+                                        ? kIsWeb
+                                            ? Image.network(
+                                                game['imagePath'],
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error,
+                                                        stackTrace) =>
+                                                    const Icon(
+                                                  Icons.broken_image,
+                                                  size: 50,
+                                                  color: Colors.grey,
+                                                ),
+                                              )
+                                            : (File(game['imagePath'])
+                                                    .existsSync()
+                                                ? Image.file(
+                                                    File(game['imagePath']),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : const Icon(
+                                                    Icons.broken_image,
+                                                    size: 50,
+                                                    color: Colors.grey,
+                                                  ))
+                                        : const Icon(
+                                            Icons.image,
+                                            size: 50,
+                                            color: Colors.grey,
+                                          ),
+                                  ),
+                                  ListTile(
+                                    title: Text(
+                                      game['title'],
+                                      style: const TextStyle(
+                                        fontSize: 16.0,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      game['description'] ?? '',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          const TextStyle(color: Colors.grey),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (game['isGenerating'] ?? false)
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black.withOpacity(0.5),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              if (game['isFailed'] ?? false)
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black.withOpacity(0.5),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 50,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
