@@ -64,6 +64,8 @@ class _GameScreenState extends State<GameScreen> {
     required String description,
     required String htmlContent,
     required String imagePath,
+    bool isGenerating = false,
+    bool isFailed = false,
   }) async {
     String newPath;
     if (index != null) {
@@ -94,6 +96,8 @@ class _GameScreenState extends State<GameScreen> {
         'description': description,
         'htmlContent': htmlContent,
         'imagePath': newPath,
+        'isGenerating': htmlContent.isEmpty, // 判断是否正在生成
+        'isFailed': isFailed, // 失败状态字段
       };
 
       if (index != null) {
@@ -116,12 +120,33 @@ class _GameScreenState extends State<GameScreen> {
     _saveGames();
   }
 
+  Future<Size> _getImageSize(String imagePath) async {
+    try {
+      final image = File(imagePath);
+      final decodedImage = await decodeImageFromList(image.readAsBytesSync());
+      return Size(
+          decodedImage.width.toDouble(), decodedImage.height.toDouble());
+    } catch (e) {
+      // debugPrint('获取图片尺寸失败: $e');
+      return const Size(16.0, 9.0); // 默认宽高比为16:9
+    }
+  }
+
   Future<void> _showBottomSheet(int index) async {
+    final game = games[index];
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) {
         return Wrap(
           children: [
+            if (game['isFailed'] ?? false)
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('重新生成'),
+                onTap: () {
+                  Navigator.pop(context, 'regenerate');
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.edit),
               title: const Text('修改'),
@@ -141,7 +166,27 @@ class _GameScreenState extends State<GameScreen> {
       },
     );
 
-    if (action == 'edit') {
+    if (action == 'regenerate') {
+      final failedGame = games[index];
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateGameScreen(
+            onGameCreated: (title, description, htmlContent, imagePath) {
+              _upsertGame(
+                index: index,
+                title: title,
+                description: description,
+                htmlContent: htmlContent,
+                imagePath: imagePath,
+                isGenerating: true,
+              );
+            },
+            initialData: failedGame,
+          ),
+        ),
+      );
+    } else if (action == 'edit') {
       final game = games[index];
       Navigator.push(
         context,
@@ -156,13 +201,13 @@ class _GameScreenState extends State<GameScreen> {
                 imagePath: imagePath,
               );
             },
-            initialData: game, // 传递初始数据
+            initialData: game,
+            initialIndex: index, // 传递当前游戏索引
           ),
         ),
       );
     } else if (action == 'delete') {
       _deleteGame(index);
-      _loadGames();
     }
   }
 
@@ -188,12 +233,21 @@ class _GameScreenState extends State<GameScreen> {
                   builder: (context) => CreateGameScreen(
                     onGameCreated:
                         (title, description, htmlContent, imagePath) {
-                      _upsertGame(
-                        title: title,
-                        description: description,
-                        htmlContent: htmlContent,
-                        imagePath: imagePath,
-                      );
+                      // 检查是否已经存在该任务，避免重复添加
+                      final existingIndex = games.indexWhere((game) =>
+                          game['title'] == title &&
+                          game['isGenerating'] == true);
+
+                      if (existingIndex == -1) {
+                        _upsertGame(
+                          title: title,
+                          description: description,
+                          htmlContent: htmlContent,
+                          imagePath: imagePath,
+                          isGenerating: htmlContent.isEmpty,
+                          isFailed: false,
+                        );
+                      }
                     },
                   ),
                 ),
@@ -202,78 +256,103 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
-      body: ListView.builder(
+      body: Padding(
         padding: const EdgeInsets.all(8.0),
-        itemCount: games.length,
-        itemBuilder: (context, index) {
-          final game = games[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(
-                vertical: 8.0, horizontal: 16.0), // 水平和垂直间距
-            child: Card(
-              elevation: 4.0, // 添加一些阴影效果
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12.0), // 圆角卡片
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 固定高度的图片显示区域，等比缩放图片
-                  if (game['imagePath'] != null && game['imagePath'].isNotEmpty)
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12.0),
-                        topRight: Radius.circular(12.0),
-                      ), // 上部圆角
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9, // 固定宽高比为16:9
-                        child: kIsWeb
-                            ? Image.network(
-                                game['imagePath'],
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(
-                                  Icons.broken_image,
-                                  size: 50,
-                                  color: Colors.grey,
-                                ),
-                              )
-                            : (File(game['imagePath']).existsSync()
-                                ? Image.file(
-                                    File(game['imagePath']),
-                                    fit: BoxFit.cover,
-                                  )
-                                : const Icon(
-                                    Icons.broken_image,
-                                    size: 50,
-                                    color: Colors.grey,
-                                  )),
+        child: GridView.builder(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12.0,
+            mainAxisSpacing: 12.0,
+          ),
+          itemCount: games.length,
+          itemBuilder: (context, index) {
+            final game = games[index];
+            final isGenerating = game['isGenerating'] ?? false;
+            final isFailed = game['isFailed'] ?? false;
+
+            return GestureDetector(
+              onLongPress: () => _showBottomSheet(index), // 支持长按操作
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12.0),
+                child: Stack(
+                  children: [
+                    Card(
+                      elevation: 4.0,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (game['imagePath'] != null &&
+                              game['imagePath'].isNotEmpty)
+                            AspectRatio(
+                              aspectRatio: 16 / 9,
+                              child: kIsWeb
+                                  ? Image.network(
+                                      game['imagePath'],
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              const Icon(
+                                        Icons.broken_image,
+                                        size: 50,
+                                        color: Colors.grey,
+                                      ),
+                                    )
+                                  : (File(game['imagePath']).existsSync()
+                                      ? Image.file(
+                                          File(game['imagePath']),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : const Icon(
+                                          Icons.broken_image,
+                                          size: 50,
+                                          color: Colors.grey,
+                                        )),
+                            ),
+                          ListTile(
+                            title: Text(
+                              game['title'],
+                              style: const TextStyle(
+                                  fontSize: 16.0, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              game['description'] ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ListTile(
-                    title: Text(
-                      game['title'],
-                      style: const TextStyle(
-                          fontSize: 16.0, fontWeight: FontWeight.bold),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WebViewPage.fromHtml(
-                            htmlContent: game['htmlContent'],
-                            title: game['title'],
+                    if (isGenerating)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.5),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    onLongPress: () => _showBottomSheet(index),
-                  ),
-                ],
+                      ),
+                    if (isFailed)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.black.withOpacity(0.5),
+                          child: const Center(
+                            child: Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 50,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

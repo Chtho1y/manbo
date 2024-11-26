@@ -10,11 +10,13 @@ class CreateGameScreen extends StatefulWidget {
       String imagePath) onGameCreated;
 
   final Map<String, dynamic>? initialData;
+  final int? initialIndex; // 初始索引参数
 
   const CreateGameScreen({
     super.key,
     required this.onGameCreated,
     this.initialData,
+    this.initialIndex, // 初始化索引
   });
 
   @override
@@ -41,7 +43,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       final initialData = widget.initialData!;
       _gameTitleController.text = initialData['title'] ?? '';
       _gameDescriptionController.text = initialData['description'] ?? '';
-      _optimizationController.text = '你对游戏的优化建议...'; // 可以提供优化建议模板（可选）
+      _optimizationController.text = ''; // 可以提供优化建议模板（你对游戏的优化建议...）
       _imagePath = initialData['imagePath'];
     }
   }
@@ -87,7 +89,50 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
             ],
           ),
         );
-        return '';
+        return '''
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错误提示</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .message-container {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        .message-container h1 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .message-container p {
+            font-size: 16px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="message-container">
+        <h1>游戏生成失败</h1>
+        <p>API 调用地址、密钥或模型名称未设置，请在设置页面填写。</p>
+    </div>
+</body>
+</html>
+''';
       }
 
       final content = originalHtml == null
@@ -228,21 +273,61 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     final optimizationSuggestion =
         isEditMode ? _optimizationController.text : ''; // 非编辑模式下优化建议为空
 
-    final generatedHtml = await _generateGameHtml(
+    // 提前保存到任务队列，并设置 `isGenerating` 为 true
+    widget.onGameCreated(
       _gameTitleController.text,
       _gameDescriptionController.text,
-      originalHtml,
-      optimizationSuggestion,
+      '', // 初始HTML为空
+      _imagePath ?? '', // 提交图片路径
     );
 
-    if (generatedHtml.isNotEmpty) {
+    // 直接返回上一个页面
+    Navigator.pop(context);
+
+    try {
+      // 异步生成任务
+      final generatedHtml = await _generateGameHtml(
+        _gameTitleController.text,
+        _gameDescriptionController.text,
+        originalHtml,
+        optimizationSuggestion,
+      );
+
+      if (generatedHtml.isNotEmpty) {
+        // 在生成任务完成时更新数据
+        widget.onGameCreated(
+          _gameTitleController.text,
+          _gameDescriptionController.text,
+          generatedHtml, // 提交生成的 HTML 内容
+          _imagePath ?? '', // 提交图片路径
+        );
+      } else {
+        // 如果生成的HTML为空，则视为失败
+        throw Exception('生成的HTML内容为空');
+      }
+    } catch (e) {
+      // 捕获生成失败的异常，并更新状态为失败
       widget.onGameCreated(
         _gameTitleController.text,
-        _gameDescriptionController.text, // 提交需求描述
-        generatedHtml, // 提交生成的 HTML 内容
+        _gameDescriptionController.text,
+        '', // HTML内容为空
         _imagePath ?? '', // 提交图片路径
       );
-      Navigator.pop(context);
+
+      // 显示失败提示
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('生成失败'),
+          content: Text('生成游戏失败：$e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
