@@ -355,13 +355,11 @@ class _GameScreenState extends State<GameScreen> {
       appBar: AppBar(
         title: const Text('游戏制作'),
         centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
-            },
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            Scaffold.of(context).openDrawer(); // 调用HomeScreen的左侧菜单
+          },
         ),
         actions: [
           IconButton(
@@ -411,27 +409,6 @@ class _GameScreenState extends State<GameScreen> {
             },
           ),
         ],
-      ),
-      drawer: Drawer(
-        // 您的侧边栏内容
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Text(
-                '菜单',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            // 添加其他菜单项
-          ],
-        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -555,6 +532,7 @@ class _GameScreenState extends State<GameScreen> {
                                       Text(
                                         game['title'],
                                         style: const TextStyle(
+                                          color: Colors.black,
                                           fontSize: 16.0,
                                           fontWeight: FontWeight.bold,
                                         ),
