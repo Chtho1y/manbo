@@ -181,19 +181,28 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         children: [
           ListTile(
-            leading: const Icon(FeatherIcons.layers),
+            leading: const Icon(
+              FeatherIcons.layers,
+              size: 20,
+            ),
             title: const Text('系统提示'),
             onTap: () =>
                 _setValue(context, 'systemPrompt', '设置系统提示词', '请输入新的系统提示词'),
           ),
           ListTile(
-            leading: const Icon(FeatherIcons.activity),
+            leading: const Icon(
+              FeatherIcons.activity,
+              size: 20,
+            ),
             title: const Text('设置 API 调用地址'),
             onTap: () => _setValue(
                 context, 'apiEndpoint', '设置 API 调用地址', '请输入新的 API 调用地址'),
           ),
           ListTile(
-            leading: const Icon(FeatherIcons.key),
+            leading: const Icon(
+              FeatherIcons.key,
+              size: 20,
+            ),
             title: const Text('设置 API 密钥'),
             onTap: () => _setValue(
               context,
@@ -204,7 +213,10 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: const Icon(FeatherIcons.cpu),
+            leading: const Icon(
+              FeatherIcons.cpu,
+              size: 20,
+            ),
             title: const Text('选择模型'),
             onTap: () => _setModel(context), // 模型选择
           ),
@@ -213,6 +225,7 @@ class SettingsScreen extends StatelessWidget {
               Theme.of(context).brightness == Brightness.dark
                   ? FeatherIcons.moon // 暗色模式
                   : FeatherIcons.sun, // 亮色模式
+              size: 20,
             ),
             title: const Text('主题模式'),
             trailing: Switch(

@@ -65,7 +65,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           children: [
             ListTile(
-              leading: const Icon(FeatherIcons.settings),
+              leading: const Icon(
+                FeatherIcons.settings,
+                size: 20,
+              ),
               title: const Text('基础设置'),
               onTap: () {
                 Navigator.push(
@@ -77,17 +80,26 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(FeatherIcons.lock),
+              leading: const Icon(
+                FeatherIcons.lock,
+                size: 20,
+              ),
               title: const Text('隐私政策'),
               onTap: () => _openPrivacyPolicyPage(context),
             ),
             ListTile(
-              leading: const Icon(FeatherIcons.fileText),
+              leading: const Icon(
+                FeatherIcons.fileText,
+                size: 20,
+              ),
               title: const Text('用户协议'),
               onTap: () => _openUserAgreementPage(context),
             ),
             ListTile(
-              leading: const Icon(FeatherIcons.info),
+              leading: const Icon(
+                FeatherIcons.info,
+                size: 20,
+              ),
               title: const Text('关于我们'),
               onTap: () => _openAboutPage(context),
             ),
@@ -104,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         showSelectedLabels: false, // 隐藏选中项的标签
         showUnselectedLabels: false, // 隐藏未选中项的标签
-        iconSize: 32.0, // 设置图标大小
+        iconSize: 28.0, // 设置图标大小
         items: const [
           BottomNavigationBarItem(
             icon: Icon(FeatherIcons.star),
