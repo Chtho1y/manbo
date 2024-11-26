@@ -42,39 +42,69 @@ class MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       title: 'manbo',
       theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.light(
-            primary: Colors.black, // 主色为黑色，适配亮色模式
-            onPrimary: const Color(0xFFF3F5F8), // 主色上的文字或图标
-            surface: Colors.white, // 卡片等表面颜色
+        useMaterial3: true,
+        colorScheme: ColorScheme.light(
+          primary: Colors.black, // 主色为黑色，适配亮色模式
+          onPrimary: const Color(0xFFF3F5F8), // 主色上的文字或图标
+          surface: Colors.white, // 卡片等表面颜色
+        ),
+        scaffoldBackgroundColor: Colors.white, // 页面背景色
+        appBarTheme: const AppBarTheme(
+          titleTextStyle: TextStyle(
+            fontSize: 20, // 设置全局 AppBar 标题字体大小
+            // fontWeight: FontWeight.bold, // 设置字体粗细
+            color: Colors.black, // 设置字体颜色
           ),
-          scaffoldBackgroundColor: Colors.white, // 页面背景色
-          appBarTheme: const AppBarTheme(
-            titleTextStyle: TextStyle(
-              fontSize: 20, // 设置全局 AppBar 标题字体大小
-              // fontWeight: FontWeight.bold, // 设置字体粗细
-              color: Colors.black, // 设置字体颜色
-            ),
-          )),
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(
+            height: 1.2, // 调整行高
+            textBaseline: TextBaseline.alphabetic, // 保证文字基线对齐
+          ),
+          bodyMedium: TextStyle(
+            height: 1.2,
+            textBaseline: TextBaseline.alphabetic,
+          ),
+          bodySmall: TextStyle(
+            height: 1.2,
+            textBaseline: TextBaseline.alphabetic,
+          ),
+        ),
+      ),
       darkTheme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.dark(
-            primary: Colors.white, // 主色为白色，适配暗黑模式
-            onPrimary: Colors.black, // 主色上的文字或图标
-            surface: const Color(0xFF121212), // 卡片等表面颜色
+        useMaterial3: true,
+        colorScheme: ColorScheme.dark(
+          primary: Colors.white, // 主色为白色，适配暗黑模式
+          onPrimary: Colors.black, // 主色上的文字或图标
+          surface: const Color(0xFF121212), // 卡片等表面颜色
+        ),
+        scaffoldBackgroundColor: Colors.black, // 页面背景色
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          selectedItemColor: Color(0xFFFFF1C2), // 暗黑模式导航栏高亮颜色
+          unselectedItemColor: Colors.white,
+        ),
+        appBarTheme: const AppBarTheme(
+          titleTextStyle: TextStyle(
+            fontSize: 20, // 设置全局 AppBar 标题字体大小
+            // fontWeight: FontWeight.bold, // 设置字体粗细
+            color: Colors.white, // 设置字体颜色
           ),
-          scaffoldBackgroundColor: Colors.black, // 页面背景色
-          bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-            selectedItemColor: Color(0xFFFFF1C2), // 暗黑模式导航栏高亮颜色
-            unselectedItemColor: Colors.white,
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(
+            height: 1.2, // 调整行高
+            textBaseline: TextBaseline.alphabetic, // 保证文字基线对齐
           ),
-          appBarTheme: const AppBarTheme(
-            titleTextStyle: TextStyle(
-              fontSize: 20, // 设置全局 AppBar 标题字体大小
-              // fontWeight: FontWeight.bold, // 设置字体粗细
-              color: Colors.white, // 设置字体颜色
-            ),
-          )),
+          bodyMedium: TextStyle(
+            height: 1.2,
+            textBaseline: TextBaseline.alphabetic,
+          ),
+          bodySmall: TextStyle(
+            height: 1.2,
+            textBaseline: TextBaseline.alphabetic,
+          ),
+        ),
+      ),
       themeMode: _themeMode,
       home: const HomeScreen(),
     );

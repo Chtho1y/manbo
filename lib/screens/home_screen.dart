@@ -67,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(
                 FeatherIcons.settings,
-                size: 20,
+                size: 18,
               ),
               title: const Text('基础设置'),
               onTap: () {
@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(
                 FeatherIcons.lock,
-                size: 20,
+                size: 18,
               ),
               title: const Text('隐私政策'),
               onTap: () => _openPrivacyPolicyPage(context),
@@ -90,7 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(
                 FeatherIcons.fileText,
-                size: 20,
+                size: 18,
               ),
               title: const Text('用户协议'),
               onTap: () => _openUserAgreementPage(context),
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               leading: const Icon(
                 FeatherIcons.info,
-                size: 20,
+                size: 18,
               ),
               title: const Text('关于我们'),
               onTap: () => _openAboutPage(context),

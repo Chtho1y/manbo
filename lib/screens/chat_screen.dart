@@ -311,13 +311,14 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    cursorColor: Colors.blue,
+                    // cursorColor: Color(0xFFFFF1C2),
                     controller: _controller,
                     decoration: const InputDecoration(
                       hintText: '输入消息...',
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.blue, width: 2.0),
-                      ),
+                      // focusedBorder: UnderlineInputBorder(
+                      //   borderSide:
+                      //       BorderSide(color: Color(0xFFFFF1C2), width: 2.0),
+                      // ),
                     ),
                   ),
                 ),
