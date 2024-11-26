@@ -4,19 +4,27 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 class CreateGameScreen extends StatefulWidget {
-  final Function(String title, String description, String htmlContent,
-      String imagePath) onGameCreated;
+  final Function(
+    String? gameId,
+    String title,
+    String description,
+    String htmlContent,
+    String imagePath,
+    bool isGenerating,
+    bool isFailed,
+  ) onGameCreated;
 
   final Map<String, dynamic>? initialData;
-  final int? initialIndex; // 初始索引参数
+  final String? gameId; // 添加 gameId 参数
 
   const CreateGameScreen({
     super.key,
     required this.onGameCreated,
     this.initialData,
-    this.initialIndex, // 初始化索引
+    this.gameId, // 初始化 gameId
   });
 
   @override
@@ -31,15 +39,18 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       TextEditingController(); // 优化输入框
   String? _imagePath;
   bool _isLoading = false;
+  final Uuid uuid = Uuid(); // 初始化 uuid
 
   late final bool isEditMode;
+  late final String? gameId;
 
   @override
   void initState() {
     super.initState();
     isEditMode = widget.initialData != null; // 在 initState 初始化 isEditMode
+    gameId = widget.gameId;
 
-    if (isEditMode) {
+    if (isEditMode && widget.initialData != null) {
       final initialData = widget.initialData!;
       _gameTitleController.text = initialData['title'] ?? '';
       _gameDescriptionController.text = initialData['description'] ?? '';
@@ -66,73 +77,13 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     String optimizationSuggestion,
   ) async {
     try {
-      setState(() {
-        _isLoading = true;
-      });
-
       final prefs = await SharedPreferences.getInstance();
       final apiEndpoint = prefs.getString('apiEndpoint') ?? '';
       final apiKey = prefs.getString('apiKey') ?? '';
       final modelName = prefs.getString('modelName') ?? '';
 
       if (apiEndpoint.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('提示'),
-            content: const Text('API 调用地址、密钥或模型名称未设置，请在设置页面填写。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('确定'),
-              ),
-            ],
-          ),
-        );
-        return '''
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>错误提示</title>
-    <style>
-        body {
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        .message-container {
-            text-align: center;
-            padding: 20px;
-            border: 1px solid #ccc;
-            background-color: #fff;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-        .message-container h1 {
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
-        .message-container p {
-            font-size: 16px;
-            margin: 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="message-container">
-        <h1>游戏生成失败</h1>
-        <p>API 调用地址、密钥或模型名称未设置，请在设置页面填写。</p>
-    </div>
-</body>
-</html>
-''';
+        throw Exception('API 调用地址、密钥或模型名称未设置，请在设置页面填写。');
       }
 
       final content = originalHtml == null
@@ -154,7 +105,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
               'role': 'system',
               'content': '''
 **Task**：
-根据用户的游戏开发需求，生成一个完整的、非常适合运行在移动设备的单文件HTML代码。输出应包括完整的HTML标记、相关标签、必要的CSS和完整的JavaScript代码。
+根据用户的游戏开发需求，生成一个完整的、可运行在移动端的单文件HTML网页代码。输出应包括完整的HTML标记、相关标签、必要的CSS和完整的JavaScript代码。
 
 **指导原则**：
 1. **理解用户需求**：
@@ -233,24 +184,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         throw Exception('未检测到有效的代码内容，请重试。');
       }
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('错误'),
-          content: Text('生成游戏失败：$e'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-      return '';
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      throw Exception('生成游戏失败：$e');
     }
   }
 
@@ -273,12 +207,22 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     final optimizationSuggestion =
         isEditMode ? _optimizationController.text : ''; // 非编辑模式下优化建议为空
 
+    String? currentGameId = gameId;
+
+    if (!isEditMode) {
+      // 生成新的 id
+      currentGameId = uuid.v4();
+    }
+
     // 提前保存到任务队列，并设置 `isGenerating` 为 true
     widget.onGameCreated(
+      currentGameId, // 传递 id
       _gameTitleController.text,
       _gameDescriptionController.text,
       '', // 初始HTML为空
       _imagePath ?? '', // 提交图片路径
+      true, // isGenerating
+      false, // isFailed
     );
 
     // 直接返回上一个页面
@@ -296,10 +240,13 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       if (generatedHtml.isNotEmpty) {
         // 在生成任务完成时更新数据
         widget.onGameCreated(
+          currentGameId, // 传递 id
           _gameTitleController.text,
           _gameDescriptionController.text,
           generatedHtml, // 提交生成的 HTML 内容
           _imagePath ?? '', // 提交图片路径
+          false, // isGenerating
+          false, // isFailed
         );
       } else {
         // 如果生成的HTML为空，则视为失败
@@ -308,10 +255,13 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     } catch (e) {
       // 捕获生成失败的异常，并更新状态为失败
       widget.onGameCreated(
+        currentGameId, // 传递 id
         _gameTitleController.text,
         _gameDescriptionController.text,
         '', // HTML内容为空
         _imagePath ?? '', // 提交图片路径
+        false, // isGenerating
+        true, // isFailed
       );
 
       // 显示失败提示

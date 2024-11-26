@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:manbo/screens/webview_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:uuid/uuid.dart'; // 导入 uuid 库
+import 'package:dio/dio.dart'; // 导入 Dio 库用于生成
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -18,6 +20,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> games = [];
+  final Uuid uuid = Uuid(); // 初始化 uuid
 
   @override
   void initState() {
@@ -59,8 +62,8 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _upsertGame({
-    int? index,
+  Future<void> _upsertGame({
+    required String? id, // 使用 id 代替 index
     required String title,
     required String description,
     required String htmlContent,
@@ -79,8 +82,9 @@ class _GameScreenState extends State<GameScreen> {
       debugPrint('获取图片宽高比失败: $e');
     }
 
-    if (index != null) {
-      final oldImagePath = games[index]['imagePath'];
+    final existingGameIndex = games.indexWhere((game) => game['id'] == id);
+    if (existingGameIndex != -1) {
+      final oldImagePath = games[existingGameIndex]['imagePath'];
       if (oldImagePath != null && oldImagePath == imagePath) {
         newPath = oldImagePath;
       } else {
@@ -98,43 +102,56 @@ class _GameScreenState extends State<GameScreen> {
           }
         }
       }
+
+      setState(() {
+        games[existingGameIndex] = {
+          'id': id,
+          'title': title,
+          'description': description,
+          'htmlContent': htmlContent,
+          'imagePath': newPath,
+          'isGenerating': isGenerating,
+          'isFailed': isFailed,
+          'aspectRatio': aspectRatio,
+        };
+      });
     } else {
-      newPath = await _saveImageToLocalDirectory(imagePath);
+      // 创建新游戏
+      setState(() {
+        games.add({
+          'id': id,
+          'title': title,
+          'description': description,
+          'htmlContent': htmlContent,
+          'imagePath': imagePath,
+          'isGenerating': isGenerating,
+          'isFailed': isFailed,
+          'aspectRatio': aspectRatio,
+        });
+      });
     }
 
-    setState(() {
-      final game = {
-        'title': title,
-        'description': description,
-        'htmlContent': htmlContent,
-        'imagePath': newPath,
-        'isGenerating': isGenerating,
-        'isFailed': isFailed,
-        'aspectRatio': aspectRatio,
-      };
+    _saveGames();
+  }
 
-      if (index != null) {
-        games[index] = game;
-      } else {
-        games.add(game);
+  void _deleteGame(String id) {
+    final existingGameIndex = games.indexWhere((game) => game['id'] == id);
+    if (existingGameIndex != -1) {
+      final imagePath = games[existingGameIndex]['imagePath'];
+      if (imagePath != null && File(imagePath).existsSync()) {
+        File(imagePath).deleteSync();
       }
-    });
-    _saveGames();
-  }
-
-  void _deleteGame(int index) {
-    final imagePath = games[index]['imagePath'];
-    if (imagePath != null && File(imagePath).existsSync()) {
-      File(imagePath).deleteSync();
+      setState(() {
+        games.removeAt(existingGameIndex);
+      });
+      _saveGames();
     }
-    setState(() {
-      games.removeAt(index);
-    });
-    _saveGames();
   }
 
-  Future<void> _showBottomSheet(int index) async {
-    final game = games[index];
+  Future<void> _showBottomSheet(String id) async {
+    final game = games.firstWhere((game) => game['id'] == id, orElse: () => {});
+    if (game.isEmpty) return;
+
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) {
@@ -168,38 +185,34 @@ class _GameScreenState extends State<GameScreen> {
     );
 
     if (action == 'regenerate') {
-      final failedGame = games[index];
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => CreateGameScreen(
-            onGameCreated: (title, description, htmlContent, imagePath) {
-              _upsertGame(
-                index: index,
-                title: title,
-                description: description,
-                htmlContent: htmlContent,
-                imagePath: imagePath,
-                isGenerating: true,
-              );
-            },
-            initialData: failedGame,
-          ),
-        ),
-      );
+      _regenerateGame(id);
     } else if (action == 'edit') {
-      final game = games[index];
+      final game =
+          games.firstWhere((game) => game['id'] == id, orElse: () => {});
+      if (game.isEmpty) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => CreateGameScreen(
-            onGameCreated: (title, description, htmlContent, imagePath) {
+            gameId: id, // 传递 id
+            onGameCreated: (
+              String? id,
+              String title,
+              String description,
+              String htmlContent,
+              String imagePath,
+              bool isGenerating,
+              bool isFailed,
+            ) {
               _upsertGame(
-                index: index,
+                id: id,
                 title: title,
                 description: description,
                 htmlContent: htmlContent,
                 imagePath: imagePath,
+                isGenerating: isGenerating,
+                isFailed: isFailed,
               );
             },
             initialData: game,
@@ -207,7 +220,132 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     } else if (action == 'delete') {
-      _deleteGame(index);
+      _deleteGame(id);
+    }
+  }
+
+  Future<void> _regenerateGame(String id) async {
+    final game = games.firstWhere((game) => game['id'] == id, orElse: () => {});
+    if (game.isEmpty) return;
+
+    final String title = game['title'] ?? '';
+    final String description = game['description'] ?? '';
+    final String? originalHtml = game['htmlContent'];
+    final String imagePath = game['imagePath'] ?? '';
+
+    if (title.isEmpty || description.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('游戏名称或描述为空，无法重新生成。')),
+      );
+      return;
+    }
+
+    // 更新游戏状态 to generating
+    _upsertGame(
+      id: id,
+      title: title,
+      description: description,
+      htmlContent: '',
+      imagePath: imagePath,
+      isGenerating: true,
+      isFailed: false,
+    );
+
+    try {
+      final generatedHtml = await _generateGameHtml(
+        title,
+        description,
+        originalHtml,
+        '', // 重新生成时不需要优化建议
+      );
+
+      if (generatedHtml.isNotEmpty) {
+        // 更新游戏内容
+        _upsertGame(
+          id: id,
+          title: title,
+          description: description,
+          htmlContent: generatedHtml,
+          imagePath: imagePath,
+          isGenerating: false,
+          isFailed: false,
+        );
+      } else {
+        throw Exception('生成的HTML内容为空');
+      }
+    } catch (e) {
+      // 更新游戏状态 to failed
+      _upsertGame(
+        id: id,
+        title: title,
+        description: description,
+        htmlContent: '',
+        imagePath: imagePath,
+        isGenerating: false,
+        isFailed: true,
+      );
+
+      // 显示失败提示
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('重新生成游戏失败：$e')),
+      );
+    }
+  }
+
+  Future<String> _generateGameHtml(
+    String title,
+    String description,
+    String? originalHtml,
+    String optimizationSuggestion,
+  ) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final apiEndpoint = prefs.getString('apiEndpoint') ?? '';
+      final apiKey = prefs.getString('apiKey') ?? '';
+      final modelName = prefs.getString('modelName') ?? '';
+
+      if (apiEndpoint.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
+        throw Exception('API 调用地址、密钥或模型名称未设置，请在设置页面填写。');
+      }
+
+      final content = originalHtml == null
+          ? '[游戏名称：$title\n游戏需求描述为：$description]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
+          : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在参考优化建议继续迭代游戏的HTML代码，输出修改后的完整单文件HTML代码，以"<!DOCTYPE html>"开头';
+
+      final response = await Dio().post(
+        apiEndpoint,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $apiKey',
+            'Content-Type': 'application/json',
+          },
+        ),
+        data: {
+          'model': modelName,
+          'messages': [
+            {
+              'role': 'system',
+              'content': '''
+
+'''
+            },
+            {'role': 'user', 'content': content},
+          ],
+        },
+      );
+
+      final rawOutput = response.data['choices'][0]['message']['content'];
+      final htmlMatch =
+          RegExp(r'<html.*?>[\s\S]*?</html>', caseSensitive: false)
+              .firstMatch(rawOutput);
+
+      if (htmlMatch != null) {
+        return htmlMatch.group(0) ?? '';
+      } else {
+        throw Exception('未检测到有效的代码内容，请重试。');
+      }
+    } catch (e) {
+      throw Exception('生成游戏失败：$e');
     }
   }
 
@@ -233,30 +371,37 @@ class _GameScreenState extends State<GameScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => CreateGameScreen(
-                    onGameCreated:
-                        (title, description, htmlContent, imagePath) {
-                      final existingIndex = games.indexWhere(
-                        (game) => game['title'] == title,
-                      );
-
-                      if (existingIndex == -1) {
+                    gameId: null, // 创建新游戏，无 id
+                    onGameCreated: (
+                      String? gameId,
+                      String title,
+                      String description,
+                      String htmlContent,
+                      String imagePath,
+                      bool isGenerating,
+                      bool isFailed,
+                    ) {
+                      if (gameId == null) {
+                        // 生成新的 id
+                        String newId = uuid.v4();
                         _upsertGame(
+                          id: newId,
                           title: title,
                           description: description,
                           htmlContent: htmlContent,
                           imagePath: imagePath,
-                          isGenerating: htmlContent.isEmpty,
-                          isFailed: false,
+                          isGenerating: isGenerating,
+                          isFailed: isFailed,
                         );
                       } else {
                         _upsertGame(
-                          index: existingIndex,
+                          id: gameId,
                           title: title,
                           description: description,
                           htmlContent: htmlContent,
                           imagePath: imagePath,
-                          isGenerating: htmlContent.isEmpty,
-                          isFailed: htmlContent.isEmpty,
+                          isGenerating: isGenerating,
+                          isFailed: isFailed,
                         );
                       }
                     },
@@ -324,7 +469,7 @@ class _GameScreenState extends State<GameScreen> {
                         );
                       }
                     },
-                    onLongPress: () => _showBottomSheet(index),
+                    onLongPress: () => _showBottomSheet(game['id']),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.0),
                       child: Container(
