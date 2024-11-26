@@ -221,16 +221,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
       body: ListView.builder(
         itemCount: chats.length,
         itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(chats[index].name),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatScreen(chat: chats[index]),
-                ),
-              );
-            },
+          return GestureDetector(
+            onLongPress: () => _onLongPress(chats[index]),
+            child: ListTile(
+              title: Text(chats[index].name),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(chat: chats[index]),
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
