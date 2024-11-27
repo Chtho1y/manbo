@@ -27,8 +27,6 @@ class _GameScreenState extends State<GameScreen> {
   final Uuid uuid = Uuid(); // 初始化 uuid
   // 用于跟踪任务监听器
   final Map<String, StreamSubscription<LLMTask>> _taskSubscriptions = {};
-  // 用于跟踪任务的定时器
-  final Map<String, Timer> _taskTimers = {};
 
   @override
   void initState() {
@@ -42,12 +40,6 @@ class _GameScreenState extends State<GameScreen> {
     for (var subscription in _taskSubscriptions.values) {
       subscription.cancel();
     }
-
-    // 取消所有跟踪任务定时器
-    for (var timer in _taskTimers.values) {
-      timer.cancel();
-    }
-
     super.dispose();
   }
 
@@ -181,41 +173,7 @@ class _GameScreenState extends State<GameScreen> {
     final taskStream = CallLLMTaskManager.instance.getTaskStream(taskId);
     if (taskStream == null) return;
 
-    // 启动一个90秒的定时器
-    Timer timeoutTimer = Timer(const Duration(seconds: 90), () {
-      // 超时后更新游戏状态为失败
-      _upsertGame(
-        id: gameId,
-        title: games.firstWhere((game) => game['id'] == gameId)['title'],
-        description:
-            games.firstWhere((game) => game['id'] == gameId)['description'],
-        htmlContent: '',
-        imagePath:
-            games.firstWhere((game) => game['id'] == gameId)['imagePath'],
-        isGenerating: false,
-        isFailed: true,
-        taskId: null, // 移除 taskId
-      );
-      // 取消任务监听器
-      _taskSubscriptions[taskId]?.cancel();
-      _taskSubscriptions.remove(taskId);
-
-      // 显示超时提示
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('生成任务超时，请重试。')),
-      );
-    });
-
-    // 将定时器添加到映射中
-    _taskTimers[taskId] = timeoutTimer;
-
     final subscription = taskStream.listen((task) {
-      // 如果任务在定时器之前完成，取消定时器
-      if (_taskTimers.containsKey(taskId)) {
-        _taskTimers[taskId]?.cancel();
-        _taskTimers.remove(taskId);
-      }
-
       if (task.status == TaskStatus.completed) {
         // 尝试从task.result中提取HTML
         final extractedHtml = _extractHtml(task.result ?? '');
@@ -251,7 +209,7 @@ class _GameScreenState extends State<GameScreen> {
 
           // 显示失败提示
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('生成任务失败，请重试。')),
+            const SnackBar(content: Text('生成任务失败，请重试。')),
           );
         }
       } else if (task.status == TaskStatus.failed) {

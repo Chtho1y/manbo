@@ -177,10 +177,6 @@ class SettingsScreen extends StatelessWidget {
                       // 重新加载 CallLLMTaskManager
                       try {
                         await CallLLMTaskManager.instance.reloadConfig();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('LLM 配置已重新加载，之前的任务已取消。')),
-                        );
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('重新加载 LLM 配置失败：$e')),

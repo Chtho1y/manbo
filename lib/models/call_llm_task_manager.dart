@@ -55,7 +55,7 @@ class CallLLMTaskManager {
     _tasks[taskId] = task; // 添加到任务映射中
 
     // 启动任务超时计时器，1分钟后标记任务为失败
-    _taskTimers[taskId] = Timer(const Duration(minutes: 1), () {
+    _taskTimers[taskId] = Timer(const Duration(seconds: 90), () {
       if (_tasks.containsKey(taskId) &&
           _tasks[taskId]?.status == TaskStatus.generating) {
         task.update(status: TaskStatus.failed, error: '任务超时，生成失败。');
