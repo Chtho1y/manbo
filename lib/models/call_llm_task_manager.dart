@@ -1,3 +1,6 @@
+// lib/managers/call_llm_task_manager.dart
+
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'llm_task.dart';
@@ -25,6 +28,9 @@ class CallLLMTaskManager {
   // 用于跟踪所有任务的映射，任务ID对应LLMTask
   final Map<String, LLMTask> _tasks = {};
 
+  // 用于跟踪任务的超时计时器
+  final Map<String, Timer> _taskTimers = {};
+
   /// 初始化管理器，通过加载API配置
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -50,8 +56,17 @@ class CallLLMTaskManager {
         LLMTask(id: taskId, status: TaskStatus.generating); // 创建新的任务
     _tasks[taskId] = task; // 添加到任务映射中
 
+    // 启动任务超时计时器，1分钟后标记任务为失败
+    _taskTimers[taskId] = Timer(const Duration(minutes: 1), () {
+      if (_tasks.containsKey(taskId) &&
+          _tasks[taskId]?.status == TaskStatus.generating) {
+        task.update(status: TaskStatus.failed, error: '任务超时，生成失败。');
+        disposeTask(taskId);
+      }
+    });
+
     // 异步调用模型API
-    _callModelAPI(task, messages);
+    _callModelAPI(task, messages, taskId);
 
     return taskId;
   }
@@ -63,7 +78,7 @@ class CallLLMTaskManager {
 
   /// 内部方法，调用模型API并更新任务状态
   Future<void> _callModelAPI(
-      LLMTask task, List<Map<String, dynamic>> messages) async {
+      LLMTask task, List<Map<String, dynamic>> messages, String taskId) async {
     try {
       final response = await _dio.post(
         _apiEndpoint,
@@ -93,6 +108,13 @@ class CallLLMTaskManager {
       }
     } catch (e) {
       task.update(status: TaskStatus.failed, error: '调用模型API失败：$e');
+    } finally {
+      // 取消超时计时器
+      _taskTimers[taskId]?.cancel();
+      _taskTimers.remove(taskId);
+
+      // 释放任务资源
+      disposeTask(taskId);
     }
   }
 

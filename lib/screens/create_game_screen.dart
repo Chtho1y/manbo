@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:manbo/models/llm_task.dart';
-import 'package:manbo/models/task_status.dart';
 import 'package:uuid/uuid.dart';
 import '../models/call_llm_task_manager.dart';
 
@@ -16,17 +15,21 @@ class CreateGameScreen extends StatefulWidget {
     String imagePath,
     bool isGenerating,
     bool isFailed,
+    String? taskId,
   ) onGameCreated;
 
+  /// 初始数据（用于编辑模式）
   final Map<String, dynamic>? initialData;
+
+  /// 游戏ID（用于编辑模式）
   final String? gameId;
 
   const CreateGameScreen({
-    super.key,
+    Key? key,
     required this.onGameCreated,
     this.initialData,
     this.gameId,
-  });
+  }) : super(key: key);
 
   @override
   _CreateGameScreenState createState() => _CreateGameScreenState();
@@ -113,10 +116,8 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       _imagePath ?? '', // 图片路径
       true, // isGenerating
       false, // isFailed
+      null, // taskId暂时为空
     );
-
-    // 关闭当前页面，返回上一页
-    Navigator.pop(context);
 
     // 准备与模型交互的消息
     final messages = [
@@ -198,53 +199,21 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     try {
       // 启动一个新的任务
       final taskId = await CallLLMTaskManager.instance.startTask(messages);
-      _taskStream = CallLLMTaskManager.instance.getTaskStream(taskId);
 
-      // 监听任务状态更新
-      _taskStream?.listen((task) {
-        if (task.status == TaskStatus.completed) {
-          // 任务完成，更新游戏状态
-          widget.onGameCreated(
-            currentGameId, // 游戏ID
-            _gameTitleController.text,
-            _gameDescriptionController.text,
-            task.result ?? '', // 生成的HTML内容
-            _imagePath ?? '', // 图片路径
-            false, // isGenerating
-            false, // isFailed
-          );
-          // 释放任务资源
-          CallLLMTaskManager.instance.disposeTask(task.id);
-        } else if (task.status == TaskStatus.failed) {
-          // 任务失败，更新游戏状态并提示用户
-          widget.onGameCreated(
-            currentGameId, // 游戏ID
-            _gameTitleController.text,
-            _gameDescriptionController.text,
-            '', // HTML内容为空
-            _imagePath ?? '', // 图片路径
-            false, // isGenerating
-            true, // isFailed
-          );
+      // 将任务ID与游戏关联，更新游戏状态并传回taskId
+      widget.onGameCreated(
+        currentGameId,
+        _gameTitleController.text,
+        _gameDescriptionController.text,
+        '',
+        _imagePath ?? '',
+        true,
+        false,
+        taskId, // 传递taskId
+      );
 
-          // 显示失败提示
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('生成失败'),
-              content: Text('生成游戏失败：${task.error}'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
-          );
-          // 释放任务资源
-          CallLLMTaskManager.instance.disposeTask(task.id);
-        }
-      });
+      // 关闭当前页面，返回上一页
+      Navigator.pop(context);
     } catch (e) {
       // 处理启动任务时的异常
       widget.onGameCreated(
@@ -255,6 +224,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         _imagePath ?? '', // 图片路径
         false, // isGenerating
         true, // isFailed
+        null, // taskId为空
       );
 
       // 显示失败提示

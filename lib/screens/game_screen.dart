@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
+import 'package:manbo/models/call_llm_task_manager.dart';
+import 'package:manbo/models/llm_task.dart';
+import 'package:manbo/models/task_status.dart';
 import 'package:manbo/screens/create_game_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:manbo/screens/webview_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:uuid/uuid.dart'; // 导入 uuid 库
-import 'package:dio/dio.dart'; // 导入 Dio 库用于生成
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -20,12 +23,24 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   List<Map<String, dynamic>> games = [];
+
   final Uuid uuid = Uuid(); // 初始化 uuid
+  // 用于跟踪任务监听器
+  final Map<String, StreamSubscription<LLMTask>> _taskSubscriptions = {};
 
   @override
   void initState() {
     super.initState();
     _loadGames();
+  }
+
+  @override
+  void dispose() {
+    // 取消所有任务监听器
+    for (var subscription in _taskSubscriptions.values) {
+      subscription.cancel();
+    }
+    super.dispose();
   }
 
   Future<void> _loadGames() async {
@@ -62,6 +77,7 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  /// 插入或更新游戏
   Future<void> _upsertGame({
     required String? id, // 使用 id 代替 index
     required String title,
@@ -70,6 +86,7 @@ class _GameScreenState extends State<GameScreen> {
     required String imagePath,
     bool isGenerating = false,
     bool isFailed = false,
+    String? taskId, // 新增 taskId
   }) async {
     String newPath;
     double aspectRatio = 16 / 9; // 默认宽高比
@@ -113,8 +130,14 @@ class _GameScreenState extends State<GameScreen> {
           'isGenerating': isGenerating,
           'isFailed': isFailed,
           'aspectRatio': aspectRatio,
+          'taskId': taskId, // 更新 taskId
         };
       });
+
+      // 如果游戏开始生成并且有 taskId，设置任务监听器
+      if (isGenerating && taskId != null) {
+        _listenToTask(id!, taskId);
+      }
     } else {
       // 创建新游戏
       setState(() {
@@ -127,13 +150,71 @@ class _GameScreenState extends State<GameScreen> {
           'isGenerating': isGenerating,
           'isFailed': isFailed,
           'aspectRatio': aspectRatio,
+          'taskId': taskId, // 新增 taskId
         });
       });
+
+      // 如果游戏开始生成并且有 taskId，设置任务监听器
+      if (isGenerating && taskId != null) {
+        _listenToTask(id!, taskId);
+      }
     }
 
     _saveGames();
   }
 
+  /// 监听指定任务的状态
+  void _listenToTask(String gameId, String taskId) {
+    // 检查是否已存在监听器
+    if (_taskSubscriptions.containsKey(taskId)) {
+      return;
+    }
+
+    final taskStream = CallLLMTaskManager.instance.getTaskStream(taskId);
+    if (taskStream == null) return;
+
+    final subscription = taskStream.listen((task) {
+      if (task.status == TaskStatus.completed) {
+        // 更新游戏状态为完成，并设置htmlContent
+        _upsertGame(
+          id: gameId,
+          title: games.firstWhere((game) => game['id'] == gameId)['title'],
+          description:
+              games.firstWhere((game) => game['id'] == gameId)['description'],
+          htmlContent: task.result ?? '',
+          imagePath:
+              games.firstWhere((game) => game['id'] == gameId)['imagePath'],
+          isGenerating: false,
+          isFailed: false,
+          taskId: null, // 任务已完成，移除 taskId
+        );
+      } else if (task.status == TaskStatus.failed) {
+        // 更新游戏状态为失败
+        _upsertGame(
+          id: gameId,
+          title: games.firstWhere((game) => game['id'] == gameId)['title'],
+          description:
+              games.firstWhere((game) => game['id'] == gameId)['description'],
+          htmlContent: '',
+          imagePath:
+              games.firstWhere((game) => game['id'] == gameId)['imagePath'],
+          isGenerating: false,
+          isFailed: true,
+          taskId: null, // 任务已完成，移除 taskId
+        );
+
+        // 显示失败提示
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('生成游戏失败：${task.error}')),
+        );
+      }
+    });
+
+    // 将监听器添加到映射中
+    _taskSubscriptions[taskId] = subscription;
+  }
+
+  /// 删除游戏
   void _deleteGame(String id) {
     final existingGameIndex = games.indexWhere((game) => game['id'] == id);
     if (existingGameIndex != -1) {
@@ -141,6 +222,14 @@ class _GameScreenState extends State<GameScreen> {
       if (imagePath != null && File(imagePath).existsSync()) {
         File(imagePath).deleteSync();
       }
+
+      // 如果有任务正在进行，取消监听器
+      final taskId = games[existingGameIndex]['taskId'];
+      if (taskId != null && _taskSubscriptions.containsKey(taskId)) {
+        _taskSubscriptions[taskId]?.cancel();
+        _taskSubscriptions.remove(taskId);
+      }
+
       setState(() {
         games.removeAt(existingGameIndex);
       });
@@ -148,6 +237,7 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  /// 显示游戏操作底部菜单
   Future<void> _showBottomSheet(String id) async {
     final game = games.firstWhere((game) => game['id'] == id, orElse: () => {});
     if (game.isEmpty) return;
@@ -157,7 +247,7 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context) {
         return Wrap(
           children: [
-            if (game['isFailed'] ?? false)
+            if (game['isFailed'] == true)
               ListTile(
                 leading: const Icon(Icons.refresh),
                 title: const Text('重新生成'),
@@ -197,22 +287,24 @@ class _GameScreenState extends State<GameScreen> {
           builder: (context) => CreateGameScreen(
             gameId: id, // 传递 id
             onGameCreated: (
-              String? id,
+              String? gameId,
               String title,
               String description,
               String htmlContent,
               String imagePath,
               bool isGenerating,
               bool isFailed,
+              String? taskId,
             ) {
               _upsertGame(
-                id: id,
+                id: gameId,
                 title: title,
                 description: description,
                 htmlContent: htmlContent,
                 imagePath: imagePath,
                 isGenerating: isGenerating,
                 isFailed: isFailed,
+                taskId: taskId,
               );
             },
             initialData: game,
@@ -224,6 +316,7 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  /// 重新生成游戏HTML内容
   Future<void> _regenerateGame(String id) async {
     final game = games.firstWhere((game) => game['id'] == id, orElse: () => {});
     if (game.isEmpty) return;
@@ -240,7 +333,7 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    // 更新游戏状态 to generating
+    // 更新游戏状态为生成中
     _upsertGame(
       id: id,
       title: title,
@@ -249,32 +342,42 @@ class _GameScreenState extends State<GameScreen> {
       imagePath: imagePath,
       isGenerating: true,
       isFailed: false,
+      taskId: null, // 重新生成前无任务ID
     );
 
-    try {
-      final generatedHtml = await _generateGameHtml(
-        title,
-        description,
-        originalHtml,
-        '', // 重新生成时不需要优化建议
-      );
+    // 准备与模型交互的消息
+    final messages = [
+      {
+        'role': 'system',
+        'content': '''
+        你是一个帮助用户生成游戏HTML代码的助手。
+        '''
+      },
+      {
+        'role': 'user',
+        'content': originalHtml == null
+            ? '[游戏名称：$title\n游戏需求描述为：$description]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
+            : '[游戏的HTML代码为：$originalHtml]现在继续迭代游戏的HTML代码，输出修改后的完整单文件HTML代码，以"<!DOCTYPE html>"开头',
+      },
+    ];
 
-      if (generatedHtml.isNotEmpty) {
-        // 更新游戏内容
-        _upsertGame(
-          id: id,
-          title: title,
-          description: description,
-          htmlContent: generatedHtml,
-          imagePath: imagePath,
-          isGenerating: false,
-          isFailed: false,
-        );
-      } else {
-        throw Exception('生成的HTML内容为空');
-      }
+    try {
+      // 启动一个新的任务
+      final taskId = await CallLLMTaskManager.instance.startTask(messages);
+
+      // 更新游戏状态为生成中，并关联 taskId
+      _upsertGame(
+        id: id,
+        title: title,
+        description: description,
+        htmlContent: '',
+        imagePath: imagePath,
+        isGenerating: true,
+        isFailed: false,
+        taskId: taskId, // 关联任务ID
+      );
     } catch (e) {
-      // 更新游戏状态 to failed
+      // 处理启动任务时的异常
       _upsertGame(
         id: id,
         title: title,
@@ -283,69 +386,13 @@ class _GameScreenState extends State<GameScreen> {
         imagePath: imagePath,
         isGenerating: false,
         isFailed: true,
+        taskId: null,
       );
 
       // 显示失败提示
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('重新生成游戏失败：$e')),
       );
-    }
-  }
-
-  Future<String> _generateGameHtml(
-    String title,
-    String description,
-    String? originalHtml,
-    String optimizationSuggestion,
-  ) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final apiEndpoint = prefs.getString('apiEndpoint') ?? '';
-      final apiKey = prefs.getString('apiKey') ?? '';
-      final modelName = prefs.getString('modelName') ?? '';
-
-      if (apiEndpoint.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
-        throw Exception('API 调用地址、密钥或模型名称未设置，请在设置页面填写。');
-      }
-
-      final content = originalHtml == null
-          ? '[游戏名称：$title\n游戏需求描述为：$description]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
-          : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在参考优化建议继续迭代游戏的HTML代码，输出修改后的完整单文件HTML代码，以"<!DOCTYPE html>"开头';
-
-      final response = await Dio().post(
-        apiEndpoint,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-        ),
-        data: {
-          'model': modelName,
-          'messages': [
-            {
-              'role': 'system',
-              'content': '''
-
-'''
-            },
-            {'role': 'user', 'content': content},
-          ],
-        },
-      );
-
-      final rawOutput = response.data['choices'][0]['message']['content'];
-      final htmlMatch =
-          RegExp(r'<html.*?>[\s\S]*?</html>', caseSensitive: false)
-              .firstMatch(rawOutput);
-
-      if (htmlMatch != null) {
-        return htmlMatch.group(0) ?? '';
-      } else {
-        throw Exception('未检测到有效的代码内容，请重试。');
-      }
-    } catch (e) {
-      throw Exception('生成游戏失败：$e');
     }
   }
 
@@ -378,6 +425,7 @@ class _GameScreenState extends State<GameScreen> {
                       String imagePath,
                       bool isGenerating,
                       bool isFailed,
+                      String? taskId,
                     ) {
                       if (gameId == null) {
                         // 生成新的 id
@@ -390,6 +438,7 @@ class _GameScreenState extends State<GameScreen> {
                           imagePath: imagePath,
                           isGenerating: isGenerating,
                           isFailed: isFailed,
+                          taskId: taskId,
                         );
                       } else {
                         _upsertGame(
@@ -400,6 +449,7 @@ class _GameScreenState extends State<GameScreen> {
                           imagePath: imagePath,
                           isGenerating: isGenerating,
                           isFailed: isFailed,
+                          taskId: taskId,
                         );
                       }
                     },
@@ -414,7 +464,7 @@ class _GameScreenState extends State<GameScreen> {
         padding: const EdgeInsets.all(8.0),
         child: games.isEmpty
             ? const Center(
-                child: Text('暂无游戏内容，点击右上角添加游戏'),
+                child: Text('点击右上角加号制作新游戏吧'),
               )
             : MasonryGridView.builder(
                 gridDelegate:
