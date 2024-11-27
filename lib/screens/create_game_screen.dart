@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
-import 'package:manbo/models/llm_task.dart';
 import 'package:uuid/uuid.dart';
 import '../models/call_llm_task_manager.dart';
 
@@ -47,7 +46,6 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
   final Uuid uuid = Uuid(); // UUID生成器
   late final bool isEditMode; // 是否为编辑模式
   late final String? gameId; // 当前游戏ID
-  Stream<LLMTask>? _taskStream; // 任务状态流
 
   @override
   void initState() {

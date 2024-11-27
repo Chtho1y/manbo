@@ -175,19 +175,43 @@ class _GameScreenState extends State<GameScreen> {
 
     final subscription = taskStream.listen((task) {
       if (task.status == TaskStatus.completed) {
-        // 更新游戏状态为完成，并设置htmlContent
-        _upsertGame(
-          id: gameId,
-          title: games.firstWhere((game) => game['id'] == gameId)['title'],
-          description:
-              games.firstWhere((game) => game['id'] == gameId)['description'],
-          htmlContent: task.result ?? '',
-          imagePath:
-              games.firstWhere((game) => game['id'] == gameId)['imagePath'],
-          isGenerating: false,
-          isFailed: false,
-          taskId: null, // 任务已完成，移除 taskId
-        );
+        // 尝试从task.result中提取HTML
+        final extractedHtml = _extractHtml(task.result ?? '');
+
+        if (extractedHtml != null && extractedHtml.isNotEmpty) {
+          // 更新游戏状态为完成，并设置提取后的htmlContent
+          _upsertGame(
+            id: gameId,
+            title: games.firstWhere((game) => game['id'] == gameId)['title'],
+            description:
+                games.firstWhere((game) => game['id'] == gameId)['description'],
+            htmlContent: extractedHtml,
+            imagePath:
+                games.firstWhere((game) => game['id'] == gameId)['imagePath'],
+            isGenerating: false,
+            isFailed: false,
+            taskId: null, // 任务已完成，移除 taskId
+          );
+        } else {
+          // 提取失败，更新游戏状态为失败
+          _upsertGame(
+            id: gameId,
+            title: games.firstWhere((game) => game['id'] == gameId)['title'],
+            description:
+                games.firstWhere((game) => game['id'] == gameId)['description'],
+            htmlContent: '',
+            imagePath:
+                games.firstWhere((game) => game['id'] == gameId)['imagePath'],
+            isGenerating: false,
+            isFailed: true,
+            taskId: null, // 任务已完成，移除 taskId
+          );
+
+          // 显示失败提示
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('生成游戏失败：无法提取有效的HTML内容。')),
+          );
+        }
       } else if (task.status == TaskStatus.failed) {
         // 更新游戏状态为失败
         _upsertGame(
@@ -212,6 +236,13 @@ class _GameScreenState extends State<GameScreen> {
 
     // 将监听器添加到映射中
     _taskSubscriptions[taskId] = subscription;
+  }
+
+  /// 从原始输出中提取HTML内容
+  String? _extractHtml(String rawOutput) {
+    final htmlMatch = RegExp(r'<html.*?>[\s\S]*?</html>', caseSensitive: false)
+        .firstMatch(rawOutput);
+    return htmlMatch?.group(0);
   }
 
   /// 删除游戏

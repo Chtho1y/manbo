@@ -9,13 +9,12 @@ void main() async {
   final isDarkMode = prefs.getBool('isDarkMode') ?? false;
 
   try {
-    // Initialize the CallLLMTaskManager
+    // 初始化 CallLLMTaskManager
     await CallLLMTaskManager.instance.initialize();
   } catch (e) {
-    // Handle initialization errors, possibly by showing an alert or redirecting to a settings screen
-    // For simplicity, we'll print the error here
-    print('Error initializing CallLLMTaskManager: $e');
-    // You might want to handle this more gracefully in a production app
+    // 处理初始化错误，例如显示提示或导航到设置页面
+    print('初始化 CallLLMTaskManager 时出错：$e');
+    // 在生产环境中，建议引导用户到设置页面输入API配置
   }
 
   runApp(
