@@ -58,7 +58,7 @@ class CallLLMTaskManager {
     _taskTimers[taskId] = Timer(const Duration(seconds: 90), () {
       if (_tasks.containsKey(taskId) &&
           _tasks[taskId]?.status == TaskStatus.generating) {
-        task.update(status: TaskStatus.failed, error: '任务超时，生成失败。');
+        task.update(status: TaskStatus.failed, error: '生成任务超时。');
         disposeTask(taskId);
       }
     });

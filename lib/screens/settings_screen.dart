@@ -1,5 +1,4 @@
-// lib/screens/settings_screen.dart
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/main.dart';
@@ -38,6 +37,32 @@ class SettingsScreen extends StatelessWidget {
       '智谱-GLM-4-plus': 'glm-4-plus',
     },
   };
+
+  // 用于将所有正在生成的任务标记为失败
+  Future<void> _failAllGeneratingGames(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? gamesJson = prefs.getString('games');
+    if (gamesJson != null) {
+      List<Map<String, dynamic>> games =
+          List<Map<String, dynamic>>.from(json.decode(gamesJson));
+      bool hasChanges = false;
+
+      for (var game in games) {
+        if (game['isGenerating'] == true) {
+          game['isGenerating'] = false;
+          game['isFailed'] = true;
+          hasChanges = true;
+        }
+      }
+
+      if (hasChanges) {
+        await prefs.setString('games', json.encode(games));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('生成任务失败，请重试。')),
+        );
+      }
+    }
+  }
 
   Future<void> _setValue(
       BuildContext context, String key, String title, String hint,
@@ -96,6 +121,8 @@ class SettingsScreen extends StatelessWidget {
       if (key == 'apiEndpoint' || key == 'apiKey' || key == 'modelName') {
         try {
           await CallLLMTaskManager.instance.reloadConfig();
+          // 标记所有正在生成的任务为失败
+          await _failAllGeneratingGames(context);
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('重新加载 LLM 配置失败：$e')),
@@ -177,6 +204,8 @@ class SettingsScreen extends StatelessWidget {
                       // 重新加载 CallLLMTaskManager
                       try {
                         await CallLLMTaskManager.instance.reloadConfig();
+                        // 标记所有正在生成的任务为失败
+                        await _failAllGeneratingGames(context);
                       } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('重新加载 LLM 配置失败：$e')),

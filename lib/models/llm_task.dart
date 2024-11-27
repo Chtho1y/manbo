@@ -22,7 +22,11 @@ class LLMTask {
   Stream<LLMTask> get stream => _controller.stream;
 
   /// 更新任务状态，并向监听者广播新的状态
-  void update({TaskStatus? status, String? result, String? error}) {
+  void update({
+    TaskStatus? status,
+    String? result,
+    String? error,
+  }) {
     if (status != null) this.status = status;
     if (result != null) this.result = result;
     if (error != null) this.error = error;

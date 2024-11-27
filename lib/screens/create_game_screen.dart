@@ -230,7 +230,7 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('生成失败'),
-          content: Text('生成游戏失败：$e'),
+          content: Text('生成任务失败，请重试。\n$e'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),

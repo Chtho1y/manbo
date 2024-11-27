@@ -50,6 +50,15 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         games = List<Map<String, dynamic>>.from(json.decode(gamesJson));
       });
+
+      // 重新监听所有未完成的任务
+      for (var game in games) {
+        if (game['taskId'] != null &&
+            game['isGenerating'] == true &&
+            game['isFailed'] == false) {
+          _listenToTask(game['id'], game['taskId']);
+        }
+      }
     }
   }
 
@@ -229,7 +238,7 @@ class _GameScreenState extends State<GameScreen> {
 
         // 显示失败提示
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('生成游戏失败：${task.error}')),
+          SnackBar(content: Text('生成任务失败，请重试。\n${task.error}')),
         );
       }
     });
@@ -359,7 +368,7 @@ class _GameScreenState extends State<GameScreen> {
 
     if (title.isEmpty || description.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('游戏名称或描述为空，无法重新生成。')),
+        const SnackBar(content: Text('无法重新生成，请删除后重试。')),
       );
       return;
     }
@@ -483,7 +492,7 @@ class _GameScreenState extends State<GameScreen> {
 
       // 显示失败提示
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('重新生成游戏失败：$e')),
+        SnackBar(content: Text('生成任务失败，请重试。\n$e')),
       );
     }
   }
