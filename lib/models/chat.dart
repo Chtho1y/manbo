@@ -1,3 +1,4 @@
+/// 对话数据结构
 class Chat {
   String id;
   String name;
@@ -6,9 +7,10 @@ class Chat {
   Chat({required this.id, required this.name, required this.messages});
 }
 
+/// 对话消息数据结构
 class Message {
   String id;
-  String role; // 'user' 或 'assistant'
+  String role;
   String content;
 
   Message({required this.id, required this.role, required this.content});

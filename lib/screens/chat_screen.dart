@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:flutter/services.dart';
+import 'package:manbo/models/call_llm_task_manager.dart';
+import 'package:manbo/models/llm_task.dart';
+import 'package:manbo/models/task_status.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../models/chat.dart';
@@ -20,6 +22,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   String _systemPrompt = "";
+  Stream<LLMTask>? _taskStream; // 任务状态流
 
   @override
   void initState() {
@@ -57,73 +60,18 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<String> _callModelAPI(List<Map<String, dynamic>> messages) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final apiEndpoint = prefs.getString('apiEndpoint') ?? '';
-      final apiKey = prefs.getString('apiKey') ?? '';
-      final modelName = prefs.getString('modelName') ?? '';
-
-      if (apiEndpoint.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('提示'),
-            content: Text('API 调用地址、密钥或模型名称未设置，请在设置页面填写。'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('确定'),
-              ),
-            ],
-          ),
-        );
-        return '';
-      }
-
-      final response = await Dio().post(
-        apiEndpoint,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
-        ),
-        data: {
-          'model': modelName, // 动态加载模型名称
-          'messages': messages, // 消息上下文
-        },
-      );
-
-      return response.data['choices'][0]['message']['content'];
-    } catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('错误'),
-          content: Text('无法获取回复，如果模型设置正常，请换句话或稍后重试。详细信息：($e)'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('确定'),
-            ),
-          ],
-        ),
-      );
-      return '';
-    }
-  }
-
+  /// 发送消息并处理回复
   void _sendMessage(String content) async {
-    if (content.trim().isEmpty) return;
+    if (content.trim().isEmpty) return; // 如果内容为空，不发送
 
-    // 用户消息
+    // 创建用户消息
     final userMessage = Message(
       id: DateTime.now().toString(),
       role: 'user',
       content: content,
     );
 
+    // 将用户消息插入数据库
     await DatabaseHelper.instance.insertMessage(
       userMessage.id,
       widget.chat.id,
@@ -135,44 +83,89 @@ class _ChatScreenState extends State<ChatScreen> {
       widget.chat.messages.add(userMessage);
     });
 
-    _controller.clear();
-    _scrollToBottom();
+    _controller.clear(); // 清空输入框
+    _scrollToBottom(); // 滚动到底部
 
-    // 调用大模型 API
-    final assistantReply = await _callModelAPI(
-      [
-        if (_systemPrompt.isNotEmpty)
-          {'role': 'system', 'content': _systemPrompt},
-        ...widget.chat.messages
-            .map((msg) => {'role': msg.role, 'content': msg.content})
-      ],
-    );
+    // 准备与模型交互的消息
+    final messages = [
+      if (_systemPrompt.isNotEmpty)
+        {
+          'role': 'system',
+          'content': _systemPrompt,
+        },
+      ...widget.chat.messages.map((msg) => {
+            'role': msg.role,
+            'content': msg.content,
+          }),
+    ];
 
-    // 如果 API 返回空内容，不添加消息
-    if (assistantReply.isEmpty) {
-      // _showTopLog(context, '无法获取回复，请稍后重试。');
-      return;
+    try {
+      // 启动一个新的任务
+      final taskId = await CallLLMTaskManager.instance.startTask(messages);
+      _taskStream = CallLLMTaskManager.instance.getTaskStream(taskId);
+
+      // 监听任务状态更新
+      _taskStream?.listen((task) async {
+        if (task.status == TaskStatus.completed) {
+          // 创建助手回复消息
+          final assistantMessage = Message(
+            id: DateTime.now().toString(),
+            role: 'assistant',
+            content: task.result ?? '',
+          );
+
+          // 将助手消息插入数据库
+          await DatabaseHelper.instance.insertMessage(
+            assistantMessage.id,
+            widget.chat.id,
+            assistantMessage.role,
+            assistantMessage.content,
+          );
+
+          setState(() {
+            widget.chat.messages.add(assistantMessage);
+          });
+
+          _scrollToBottom(); // 滚动到底部
+
+          // 释放任务资源
+          CallLLMTaskManager.instance.disposeTask(task.id);
+        } else if (task.status == TaskStatus.failed) {
+          // 显示错误提示
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('错误'),
+              content: Text('无法获取回复：${task.error}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+
+          // 释放任务资源
+          CallLLMTaskManager.instance.disposeTask(task.id);
+        }
+      });
+    } catch (e) {
+      // 处理启动任务时的异常
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('错误'),
+          content: Text('无法发送消息：$e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('确定'),
+            ),
+          ],
+        ),
+      );
     }
-
-    // 模型回复消息
-    final assistantMessage = Message(
-      id: DateTime.now().toString(),
-      role: 'assistant',
-      content: assistantReply,
-    );
-
-    await DatabaseHelper.instance.insertMessage(
-      assistantMessage.id,
-      widget.chat.id,
-      assistantMessage.role,
-      assistantMessage.content,
-    );
-
-    setState(() {
-      widget.chat.messages.add(assistantMessage);
-    });
-
-    _scrollToBottom();
   }
 
   Future<void> _deleteMessage(Message message) async {

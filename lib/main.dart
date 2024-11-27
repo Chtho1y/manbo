@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:manbo/models/call_llm_task_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:manbo/screens/home_screen.dart';
 
@@ -6,6 +7,16 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+
+  try {
+    // Initialize the CallLLMTaskManager
+    await CallLLMTaskManager.instance.initialize();
+  } catch (e) {
+    // Handle initialization errors, possibly by showing an alert or redirecting to a settings screen
+    // For simplicity, we'll print the error here
+    print('Error initializing CallLLMTaskManager: $e');
+    // You might want to handle this more gracefully in a production app
+  }
 
   runApp(
       MyApp(initialThemeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light));

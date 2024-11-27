@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:manbo/models/llm_task.dart';
+import 'package:manbo/models/task_status.dart';
 import 'package:uuid/uuid.dart';
+import '../models/call_llm_task_manager.dart';
 
 class CreateGameScreen extends StatefulWidget {
   final Function(
@@ -18,13 +19,13 @@ class CreateGameScreen extends StatefulWidget {
   ) onGameCreated;
 
   final Map<String, dynamic>? initialData;
-  final String? gameId; // 添加 gameId 参数
+  final String? gameId;
 
   const CreateGameScreen({
     super.key,
     required this.onGameCreated,
     this.initialData,
-    this.gameId, // 初始化 gameId
+    this.gameId,
   });
 
   @override
@@ -37,12 +38,13 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
       TextEditingController();
   final TextEditingController _optimizationController =
       TextEditingController(); // 优化输入框
+
   String? _imagePath;
   bool _isLoading = false;
-  final Uuid uuid = Uuid(); // 初始化 uuid
-
-  late final bool isEditMode;
-  late final String? gameId;
+  final Uuid uuid = Uuid(); // UUID生成器
+  late final bool isEditMode; // 是否为编辑模式
+  late final String? gameId; // 当前游戏ID
+  Stream<LLMTask>? _taskStream; // 任务状态流
 
   @override
   void initState() {
@@ -70,40 +72,57 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
     }
   }
 
-  Future<String> _generateGameHtml(
-    String title,
-    String description,
-    String? originalHtml,
-    String optimizationSuggestion,
-  ) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final apiEndpoint = prefs.getString('apiEndpoint') ?? '';
-      final apiKey = prefs.getString('apiKey') ?? '';
-      final modelName = prefs.getString('modelName') ?? '';
-
-      if (apiEndpoint.isEmpty || apiKey.isEmpty || modelName.isEmpty) {
-        throw Exception('API 调用地址、密钥或模型名称未设置，请在设置页面填写。');
-      }
-
-      final content = originalHtml == null
-          ? '[游戏名称：$title\n游戏需求描述为：$description]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
-          : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在参考优化建议继续迭代游戏的HTML代码，输出修改后的完整单文件HTML代码，以"<!DOCTYPE html>"开头';
-
-      final response = await Dio().post(
-        apiEndpoint,
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-            'Content-Type': 'application/json',
-          },
+  /// 生成游戏HTML内容
+  void _onGenerateGame() async {
+    if (_gameTitleController.text.isEmpty ||
+        _gameDescriptionController.text.isEmpty) {
+      // 提示用户填写完整信息
+      showDialog(
+        context: context,
+        builder: (context) => const AlertDialog(
+          title: Text('提示'),
+          content: Text('请填写完整的游戏名称和需求描述！'),
         ),
-        data: {
-          'model': modelName,
-          'messages': [
-            {
-              'role': 'system',
-              'content': '''
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true; // 显示加载状态
+    });
+
+    // 根据 isEditMode 决定是否使用原始 HTML
+    final originalHtml =
+        widget.initialData != null ? widget.initialData!['htmlContent'] : null;
+    final optimizationSuggestion =
+        isEditMode ? _optimizationController.text : ''; // 非编辑模式下优化建议为空
+
+    String? currentGameId = gameId;
+
+    if (!isEditMode) {
+      // 生成新的游戏ID
+      currentGameId = uuid.v4();
+    }
+
+    // 先保存游戏状态，标记为生成中
+    widget.onGameCreated(
+      currentGameId, // 传递游戏ID
+      _gameTitleController.text,
+      _gameDescriptionController.text,
+      '', // 初始HTML为空
+      _imagePath ?? '', // 图片路径
+      true, // isGenerating
+      false, // isFailed
+    );
+
+    // 关闭当前页面，返回上一页
+    Navigator.pop(context);
+
+    // 准备与模型交互的消息
+    final messages = [
+      {
+        'role': 'system',
+        'content': '''
 **Task**：
 根据用户的游戏开发需求，生成一个完整的、可运行在移动端的单文件HTML网页代码。输出应包括完整的HTML标记、相关标签、必要的CSS和完整的JavaScript代码。
 
@@ -166,100 +185,74 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
 </body>
 </html>
 ```
-'''
-            },
-            {'role': 'user', 'content': content},
-          ],
-        },
-      );
-
-      final rawOutput = response.data['choices'][0]['message']['content'];
-      final htmlMatch =
-          RegExp(r'<html.*?>[\s\S]*?</html>', caseSensitive: false)
-              .firstMatch(rawOutput);
-
-      if (htmlMatch != null) {
-        return htmlMatch.group(0) ?? '';
-      } else {
-        throw Exception('未检测到有效的代码内容，请重试。');
-      }
-    } catch (e) {
-      throw Exception('生成游戏失败：$e');
-    }
-  }
-
-  void _onGenerateGame() async {
-    if (_gameTitleController.text.isEmpty ||
-        _gameDescriptionController.text.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => const AlertDialog(
-          title: Text('提示'),
-          content: Text('请填写完整的游戏名称和需求描述！'),
-        ),
-      );
-      return;
-    }
-
-    // 根据 isEditMode 决定是否使用原始 HTML
-    final originalHtml =
-        widget.initialData != null ? widget.initialData!['htmlContent'] : null;
-    final optimizationSuggestion =
-        isEditMode ? _optimizationController.text : ''; // 非编辑模式下优化建议为空
-
-    String? currentGameId = gameId;
-
-    if (!isEditMode) {
-      // 生成新的 id
-      currentGameId = uuid.v4();
-    }
-
-    // 提前保存到任务队列，并设置 `isGenerating` 为 true
-    widget.onGameCreated(
-      currentGameId, // 传递 id
-      _gameTitleController.text,
-      _gameDescriptionController.text,
-      '', // 初始HTML为空
-      _imagePath ?? '', // 提交图片路径
-      true, // isGenerating
-      false, // isFailed
-    );
-
-    // 直接返回上一个页面
-    Navigator.pop(context);
+        '''
+      },
+      {
+        'role': 'user',
+        'content': originalHtml == null
+            ? '[游戏名称：${_gameTitleController.text}\n游戏需求描述为：${_gameDescriptionController.text}]现在制作该游戏的单文件HTML网页代码，以"<!DOCTYPE html>"开头'
+            : '[游戏的HTML代码为：$originalHtml\n给出的优化建议：$optimizationSuggestion]现在参考优化建议继续迭代游戏的HTML代码，输出修改后的完整单文件HTML代码，以"<!DOCTYPE html>"开头',
+      },
+    ];
 
     try {
-      // 异步生成任务
-      final generatedHtml = await _generateGameHtml(
-        _gameTitleController.text,
-        _gameDescriptionController.text,
-        originalHtml,
-        optimizationSuggestion,
-      );
+      // 启动一个新的任务
+      final taskId = await CallLLMTaskManager.instance.startTask(messages);
+      _taskStream = CallLLMTaskManager.instance.getTaskStream(taskId);
 
-      if (generatedHtml.isNotEmpty) {
-        // 在生成任务完成时更新数据
-        widget.onGameCreated(
-          currentGameId, // 传递 id
-          _gameTitleController.text,
-          _gameDescriptionController.text,
-          generatedHtml, // 提交生成的 HTML 内容
-          _imagePath ?? '', // 提交图片路径
-          false, // isGenerating
-          false, // isFailed
-        );
-      } else {
-        // 如果生成的HTML为空，则视为失败
-        throw Exception('生成的HTML内容为空');
-      }
+      // 监听任务状态更新
+      _taskStream?.listen((task) {
+        if (task.status == TaskStatus.completed) {
+          // 任务完成，更新游戏状态
+          widget.onGameCreated(
+            currentGameId, // 游戏ID
+            _gameTitleController.text,
+            _gameDescriptionController.text,
+            task.result ?? '', // 生成的HTML内容
+            _imagePath ?? '', // 图片路径
+            false, // isGenerating
+            false, // isFailed
+          );
+          // 释放任务资源
+          CallLLMTaskManager.instance.disposeTask(task.id);
+        } else if (task.status == TaskStatus.failed) {
+          // 任务失败，更新游戏状态并提示用户
+          widget.onGameCreated(
+            currentGameId, // 游戏ID
+            _gameTitleController.text,
+            _gameDescriptionController.text,
+            '', // HTML内容为空
+            _imagePath ?? '', // 图片路径
+            false, // isGenerating
+            true, // isFailed
+          );
+
+          // 显示失败提示
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('生成失败'),
+              content: Text('生成游戏失败：${task.error}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+          // 释放任务资源
+          CallLLMTaskManager.instance.disposeTask(task.id);
+        }
+      });
     } catch (e) {
-      // 捕获生成失败的异常，并更新状态为失败
+      // 处理启动任务时的异常
       widget.onGameCreated(
-        currentGameId, // 传递 id
+        currentGameId, // 游戏ID
         _gameTitleController.text,
         _gameDescriptionController.text,
         '', // HTML内容为空
-        _imagePath ?? '', // 提交图片路径
+        _imagePath ?? '', // 图片路径
         false, // isGenerating
         true, // isFailed
       );
@@ -278,6 +271,10 @@ class _CreateGameScreenState extends State<CreateGameScreen> {
           ],
         ),
       );
+    } finally {
+      setState(() {
+        _isLoading = false; // 结束加载状态
+      });
     }
   }
 
