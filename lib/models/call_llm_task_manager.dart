@@ -1,5 +1,3 @@
-// lib/managers/call_llm_task_manager.dart
-
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -124,8 +122,22 @@ class CallLLMTaskManager {
     _tasks.remove(taskId);
   }
 
-  /// 重新加载API配置
+  /// 重新加载API配置，并取消所有正在进行的任务
   Future<void> reloadConfig() async {
+    // 取消并标记所有正在进行的任务为失败
+    for (var taskId in _tasks.keys.toList()) {
+      final task = _tasks[taskId];
+      task?.update(status: TaskStatus.failed, error: 'API配置已更新，任务已取消。');
+
+      // 取消超时计时器
+      _taskTimers[taskId]?.cancel();
+      _taskTimers.remove(taskId);
+
+      // 释放任务资源
+      disposeTask(taskId);
+    }
+
+    // 重新初始化配置
     _isInitialized = false;
     await initialize();
   }

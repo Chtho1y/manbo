@@ -1,6 +1,9 @@
+// lib/screens/settings_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
 import 'package:manbo/main.dart';
+import 'package:manbo/models/call_llm_task_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -88,6 +91,17 @@ class SettingsScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('$title 已更新')),
       );
+
+      // 如果修改的是 API 配置，则重新加载 CallLLMTaskManager
+      if (key == 'apiEndpoint' || key == 'apiKey' || key == 'modelName') {
+        try {
+          await CallLLMTaskManager.instance.reloadConfig();
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('重新加载 LLM 配置失败：$e')),
+          );
+        }
+      }
     }
   }
 
@@ -96,7 +110,7 @@ class SettingsScreen extends StatelessWidget {
 
     // 当前选择的厂商和模型
     String? selectedVendor = prefs.getString('modelVendor') ?? 'OpenAI';
-    String? selectedModel = prefs.getString('modelName') ?? 'gpt-4o-mini';
+    String? selectedModel = prefs.getString('modelName') ?? 'gpt-4-mini';
 
     await showDialog(
       context: context,
@@ -159,6 +173,19 @@ class SettingsScreen extends StatelessWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('模型设置已更新')),
                       );
+
+                      // 重新加载 CallLLMTaskManager
+                      try {
+                        await CallLLMTaskManager.instance.reloadConfig();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('LLM 配置已重新加载，之前的任务已取消。')),
+                        );
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('重新加载 LLM 配置失败：$e')),
+                        );
+                      }
                     }
                   },
                   child: const Text('确定'),
