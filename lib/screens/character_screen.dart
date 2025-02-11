@@ -258,7 +258,10 @@ class _CharacterScreenState extends State<CharacterScreen> {
         padding: const EdgeInsets.all(8.0),
         child: chatRoles.isEmpty
             ? const Center(
-                child: Text('暂无角色，点击右上角添加角色'),
+                child: Text('暂无角色，点击右上角加号添加角色',
+                    style: const TextStyle(
+                      fontSize: 18.0,
+                    )),
               )
             : MasonryGridView.builder(
                 gridDelegate:

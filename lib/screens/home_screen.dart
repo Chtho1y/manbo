@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_feather_icons/flutter_feather_icons.dart';
-import 'package:manbo/screens/game_screen.dart';
+import 'package:manbo/screens/doc_upload_screen.dart';
+// import 'package:manbo/screens/game_screen.dart';
 import 'chat_list_screen.dart';
 import 'character_screen.dart';
 import 'settings_screen.dart';
@@ -17,7 +18,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 1; // 初始化进入_tabs[_currentIndex]值对应的界面
 
   final List<Widget> _tabs = [
-    const GameScreen(), // 游戏页面
+    // const GameScreen(), // 游戏页面
+    const DocumentUploadScreen(), // 文档上传页面
     const CharacterScreen(), // 角色UGC页面
     const ChatListScreen(), // 对话页面
   ];
@@ -118,10 +120,12 @@ class _HomeScreenState extends State<HomeScreen> {
         showUnselectedLabels: false, // 隐藏未选中项的标签
         iconSize: 28.0, // 设置图标大小
         items: const [
+          // BottomNavigationBarItem(
+          //   icon: Icon(FeatherIcons.star),
+          //   label: '', // 游戏
+          // ),
           BottomNavigationBarItem(
-            icon: Icon(FeatherIcons.star),
-            label: '', // 游戏
-          ),
+              icon: Icon(FeatherIcons.uploadCloud), label: ''), // 文档上传
           BottomNavigationBarItem(
             icon: Icon(FeatherIcons.plusCircle),
             label: '', // 角色
